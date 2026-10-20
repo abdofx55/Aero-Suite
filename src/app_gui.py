@@ -898,6 +898,7 @@ class AeroSuiteApp(ctk.CTk):
         for w in self.install_scroll.winfo_children():
             w.destroy()
 
+        self.install_cards_map = {}
         q = self.install_search_query.strip().lower()
         matching_apks = [
             a for a in self.local_apks
@@ -926,18 +927,12 @@ class AeroSuiteApp(ctk.CTk):
             top_row.pack(fill="x", padx=10, pady=(6, 2))
 
             sel_var = ctk.BooleanVar(value=self.selected_install_apks.get(f, False))
-            def _on_chk(fname=f, v=sel_var):
-                is_selected = v.get()
-                self.selected_install_apks[fname] = is_selected
-                if not is_selected and self.auto_launch_app_filename == fname:
-                    self.auto_launch_app_filename = None
-                    self._render_install_apk_cards()
 
             chk = ctk.CTkCheckBox(
                 top_row, text=a["display_name"], variable=sel_var,
                 font=("Inter", 12, "bold"), text_color=theme.TEXT_PRIMARY,
                 checkmark_color=theme.BG_BASE, fg_color=theme.CYAN_PRIMARY,
-                command=_on_chk
+                command=lambda fname=f: self._on_install_chk_toggle(fname)
             )
             chk.pack(side="left")
 
@@ -979,21 +974,13 @@ class AeroSuiteApp(ctk.CTk):
             # Auto Launch Checkbox (FIRST option before Force Portrait and Block Boot Launch, default: False / Unchecked, single selection)
             is_auto = (self.auto_launch_app_filename == f)
             auto_var = ctk.BooleanVar(value=is_auto)
-            def _on_auto_change(fname=f, v=auto_var):
-                if v.get():
-                    self.auto_launch_app_filename = fname
-                    self.selected_install_apks[fname] = True
-                else:
-                    if self.auto_launch_app_filename == fname:
-                        self.auto_launch_app_filename = None
-                self._render_install_apk_cards()
 
             chk_auto = ctk.CTkCheckBox(
                 bot_row, text="Auto Launch", variable=auto_var,
                 font=("Inter", 10, "bold" if is_auto else "normal"),
                 text_color=theme.MINT_SUCCESS if is_auto else theme.TEXT_PRIMARY,
                 checkmark_color=theme.BG_BASE, fg_color=theme.MINT_SUCCESS,
-                width=16, command=_on_auto_change
+                width=16, command=lambda fname=f: self._on_auto_launch_toggle(fname)
             )
             chk_auto.pack(side="left", padx=(0, 16))
 
@@ -1023,6 +1010,55 @@ class AeroSuiteApp(ctk.CTk):
             )
             chk_boot.pack(side="left")
 
+            self.install_cards_map[f] = {
+                "sel_var": sel_var,
+                "auto_var": auto_var,
+                "chk_auto": chk_auto,
+            }
+
+    def _on_install_chk_toggle(self, fname: str):
+        target = self.install_cards_map.get(fname)
+        if not target:
+            return
+        is_selected = target["sel_var"].get()
+        self.selected_install_apks[fname] = is_selected
+        if not is_selected and self.auto_launch_app_filename == fname:
+            self.auto_launch_app_filename = None
+            target["auto_var"].set(False)
+            target["chk_auto"].configure(font=("Inter", 10, "normal"), text_color=theme.TEXT_PRIMARY)
+
+    def _on_auto_launch_toggle(self, fname: str):
+        target = self.install_cards_map.get(fname)
+        if not target:
+            return
+
+        is_checked = target["auto_var"].get()
+        if is_checked:
+            self.auto_launch_app_filename = fname
+            self.selected_install_apks[fname] = True
+            target["sel_var"].set(True)
+
+            # In-place state update across all cards: NO recomposition, NO flicker!
+            for f_key, card_widgets in self.install_cards_map.items():
+                if f_key == fname:
+                    card_widgets["chk_auto"].configure(
+                        font=("Inter", 10, "bold"),
+                        text_color=theme.MINT_SUCCESS
+                    )
+                else:
+                    card_widgets["auto_var"].set(False)
+                    card_widgets["chk_auto"].configure(
+                        font=("Inter", 10, "normal"),
+                        text_color=theme.TEXT_PRIMARY
+                    )
+        else:
+            if self.auto_launch_app_filename == fname:
+                self.auto_launch_app_filename = None
+            target["chk_auto"].configure(
+                font=("Inter", 10, "normal"),
+                text_color=theme.TEXT_PRIMARY
+            )
+
     def _toggle_install_all(self, state: bool):
         q = self.install_search_query.strip().lower()
         for a in self.local_apks:
@@ -1031,7 +1067,14 @@ class AeroSuiteApp(ctk.CTk):
                 self.selected_install_apks[f] = state
                 if not state and self.auto_launch_app_filename == f:
                     self.auto_launch_app_filename = None
-        self._render_install_apk_cards()
+
+                if hasattr(self, "install_cards_map") and f in self.install_cards_map:
+                    item = self.install_cards_map[f]
+                    item["sel_var"].set(state)
+                    if not state:
+                        item["auto_var"].set(False)
+                        item["chk_auto"].configure(font=("Inter", 10, "normal"), text_color=theme.TEXT_PRIMARY)
+
 
     def _execute_prepare_install_usb(self):
         if not self._check_usb_ready(): return
@@ -1473,7 +1516,7 @@ class AeroSuiteApp(ctk.CTk):
 
         ctk.CTkLabel(
             banner,
-            text="💡 Select any application below to generate an auto-launch USB payload.\nWhen plugged into the vehicle, the script checks if the package exists on the car and brings it to the foreground immediately.",
+            text="💡 Select an application below to generate an auto-launch USB payload.\nWhen plugged into the vehicle, the script brings the chosen application to the foreground immediately.",
             font=("Inter", 11),
             text_color=theme.TEXT_MUTED,
             justify="left"
@@ -1509,6 +1552,12 @@ class AeroSuiteApp(ctk.CTk):
         )
         btn_refresh.pack(side="right", padx=(8, 0))
 
+        # Default to first available app if none is selected, so the button is immediately ready & enabled
+        if (not getattr(self, "selected_open_app_pkg", None) or self.selected_open_app_pkg not in self.allowed_packages) and self.local_apks:
+            first_pkg = next((a["package"] for a in self.local_apks if a.get("package")), "")
+            if first_pkg:
+                self.selected_open_app_pkg = first_pkg
+
         # Action Button Bar (Anchored strictly to bottom FIRST so it never disappears)
         is_running = (self.current_operation == "open_app")
         selected_pkg = getattr(self, "selected_open_app_pkg", "")
@@ -1518,22 +1567,26 @@ class AeroSuiteApp(ctk.CTk):
         if is_running:
             d_text = f"⏳ Loading... Preparing Launch USB for {selected_title}..."
             d_fg = theme.SURFACE_3
+            d_hover = theme.SURFACE_3
             d_text_color = theme.TEXT_MUTED
             d_state = "disabled"
         elif self.is_busy:
             d_text = f"🔒 System Busy ({self.current_operation_title or 'Operation in progress'})..."
             d_fg = theme.SURFACE_3
+            d_hover = theme.SURFACE_3
             d_text_color = theme.TEXT_MUTED
             d_state = "disabled"
         elif not selected_pkg:
             d_text = "👆 SELECT AN APP FROM THE LIST ABOVE TO PREPARE LAUNCH USB"
             d_fg = theme.SURFACE_2
+            d_hover = theme.SURFACE_2
             d_text_color = theme.TEXT_MUTED
             d_state = "disabled"
         else:
             d_text = f"🚀 PREPARE LAUNCH USB FOR: {selected_title.upper()}"
             d_fg = theme.CYAN_PRIMARY
-            d_text_color = theme.SURFACE_0
+            d_hover = theme.CYAN_HOVER
+            d_text_color = theme.BG_BASE
             d_state = "normal"
 
         btn_bar = ctk.CTkFrame(self.content_panel, fg_color="transparent")
@@ -1545,7 +1598,7 @@ class AeroSuiteApp(ctk.CTk):
             height=44,
             font=("Space Grotesk", 14, "bold"),
             fg_color=d_fg,
-            hover_color=d_fg if (is_running or self.is_busy or not selected_pkg) else theme.CYAN_HOVER,
+            hover_color=d_hover,
             text_color=d_text_color,
             state=d_state,
             command=self._execute_prepare_open_app_usb
@@ -1561,11 +1614,11 @@ class AeroSuiteApp(ctk.CTk):
             )
             btn_cancel.pack(side="left", padx=(10, 0))
 
-        # Scrollable container for app cards (claims remaining area above button bar)
+        # Scrollable container for app rows (claims remaining area above button bar)
         self.open_app_scroll = ctk.CTkScrollableFrame(self.content_panel, fg_color="transparent")
         self.open_app_scroll.pack(side="top", fill="both", expand=True, padx=20, pady=(0, 10))
 
-        self.open_app_card_widgets = {}
+        self.open_app_row_items = {}
         self._render_open_app_rows()
 
     def _on_open_app_search_change(self, event=None):
@@ -1573,124 +1626,133 @@ class AeroSuiteApp(ctk.CTk):
         self._render_open_app_rows()
 
     def _select_open_app(self, pkg_name: str):
+        # Strict single selection enforcement: only ONE app can be selected at a time
         self.selected_open_app_pkg = pkg_name
 
-        # Update card visuals in-place without tearing down the view or losing scroll position
-        for p, w_dict in self.open_app_card_widgets.items():
+        for p, item in self.open_app_row_items.items():
             is_cur = (p == pkg_name)
-            if hasattr(w_dict["frame"], "winfo_exists") and w_dict["frame"].winfo_exists():
-                w_dict["frame"].configure(
+            item["var"].set(is_cur)
+            if hasattr(item["row"], "winfo_exists") and item["row"].winfo_exists():
+                item["row"].configure(
                     fg_color=theme.CYAN_ALPHA_15 if is_cur else theme.SURFACE_2,
                     border_color=theme.CYAN_PRIMARY if is_cur else theme.BORDER_SLATE
                 )
-                w_dict["name_lbl"].configure(
+                item["chk"].configure(
                     text_color=theme.CYAN_PRIMARY if is_cur else theme.TEXT_PRIMARY
                 )
-                w_dict["btn_select"].configure(
-                    text="✓ SELECTED" if is_cur else "SELECT",
-                    fg_color=theme.CYAN_PRIMARY if is_cur else theme.SURFACE_3,
-                    hover_color=theme.CYAN_HOVER if is_cur else theme.SURFACE_1,
-                    text_color=theme.SURFACE_0 if is_cur else theme.CYAN_PRIMARY
+                item["size_lbl"].configure(
+                    text_color=theme.CYAN_PRIMARY if is_cur else theme.TEXT_MUTED
                 )
 
-        # Update launch button text & state in-place
-        if hasattr(self, "btn_open_app_launch") and self.btn_open_app_launch.winfo_exists():
-            if not self.is_busy and self.current_operation != "open_app":
-                selected_app_info = next((a for a in self.local_apks if a["package"] == pkg_name), None)
-                selected_title = selected_app_info["display_name"] if selected_app_info else pkg_name
-                self.btn_open_app_launch.configure(
-                    text=f"🚀 PREPARE LAUNCH USB FOR: {selected_title.upper()}",
-                    fg_color=theme.CYAN_PRIMARY,
-                    hover_color=theme.CYAN_HOVER,
-                    text_color=theme.SURFACE_0,
-                    state="normal"
-                )
+        self._update_open_app_launch_button()
+
+    def _update_open_app_launch_button(self):
+        if not hasattr(self, "btn_open_app_launch") or not self.btn_open_app_launch.winfo_exists():
+            return
+        if self.is_busy or self.current_operation == "open_app":
+            return
+
+        if self.selected_open_app_pkg:
+            selected_app_info = next((a for a in self.local_apks if a["package"] == self.selected_open_app_pkg), None)
+            selected_title = selected_app_info["display_name"] if selected_app_info else self.selected_open_app_pkg
+            self.btn_open_app_launch.configure(
+                text=f"🚀 PREPARE LAUNCH USB FOR: {selected_title.upper()}",
+                fg_color=theme.CYAN_PRIMARY,
+                hover_color=theme.CYAN_HOVER,
+                text_color=theme.BG_BASE,
+                state="normal"
+            )
+        else:
+            self.btn_open_app_launch.configure(
+                text="👆 SELECT AN APP FROM THE LIST ABOVE TO PREPARE LAUNCH USB",
+                fg_color=theme.SURFACE_2,
+                hover_color=theme.SURFACE_2,
+                text_color=theme.TEXT_MUTED,
+                state="disabled"
+            )
 
     def _render_open_app_rows(self):
         for w in self.open_app_scroll.winfo_children():
             w.destroy()
 
-        self.open_app_card_widgets = {}
+        self.open_app_row_items = {}
         q = self.open_app_search_query.strip().lower()
         matching_apks = [
             a for a in self.local_apks
-            if (not q or q in a["display_name"].lower() or q in a["package"].lower() or q in a["filename"].lower())
+            if a.get("package") and (not q or q in a["display_name"].lower() or q in a["package"].lower() or q in a["filename"].lower())
         ]
 
         if not matching_apks:
+            empty_box = ctk.CTkFrame(self.open_app_scroll, fg_color=theme.SURFACE_2, corner_radius=8)
+            empty_box.pack(fill="x", pady=20)
             ctk.CTkLabel(
-                self.open_app_scroll,
-                text="No matching applications found.",
-                font=("Inter", 12),
-                text_color=theme.TEXT_MUTED
-            ).pack(pady=20)
+                empty_box,
+                text=f"No matching applications found.",
+                font=("Inter", 12), text_color=theme.TEXT_MUTED
+            ).pack(pady=16)
             return
 
         for a in matching_apks:
             pkg = a["package"]
             is_selected = (self.selected_open_app_pkg == pkg)
 
-            card_border = theme.CYAN_PRIMARY if is_selected else theme.BORDER_SLATE
-            card_bg = theme.CYAN_ALPHA_15 if is_selected else theme.SURFACE_2
-
+            # Compact row matching Safe Uninstall exactly (height=36, corner_radius=8, border_width=1)
             row = ctk.CTkFrame(
                 self.open_app_scroll,
-                fg_color=card_bg,
+                fg_color=theme.CYAN_ALPHA_15 if is_selected else theme.SURFACE_2,
                 corner_radius=8,
+                height=36,
                 border_width=1,
-                border_color=card_border
+                border_color=theme.CYAN_PRIMARY if is_selected else theme.BORDER_SLATE
             )
-            row.pack(fill="x", pady=3)
+            row.pack(fill="x", pady=3, padx=2)
 
-            # Left Info
-            info_frame = ctk.CTkFrame(row, fg_color="transparent")
-            info_frame.pack(side="left", fill="both", expand=True, padx=12, pady=8)
+            sel_var = ctk.BooleanVar(value=is_selected)
 
-            name_lbl = ctk.CTkLabel(
-                info_frame,
-                text=a["display_name"],
-                font=("Space Grotesk", 12, "bold"),
-                text_color=theme.CYAN_PRIMARY if is_selected else theme.TEXT_PRIMARY
-            )
-            name_lbl.pack(anchor="w")
-
-            meta_text = f"Package: {pkg}  •  Size: {a['size_mb']} MB"
-            ctk.CTkLabel(
-                info_frame,
-                text=meta_text,
-                font=("Consolas", 10),
-                text_color=theme.TEXT_MUTED
-            ).pack(anchor="w", pady=(2, 0))
-
-            # Right Select Indicator / Button
-            btn_select = ctk.CTkButton(
+            chk = ctk.CTkCheckBox(
                 row,
-                text="✓ SELECTED" if is_selected else "SELECT",
-                width=100,
-                height=30,
-                font=("Space Grotesk", 11, "bold"),
-                fg_color=theme.CYAN_PRIMARY if is_selected else theme.SURFACE_3,
-                hover_color=theme.CYAN_HOVER if is_selected else theme.SURFACE_1,
-                text_color=theme.SURFACE_0 if is_selected else theme.CYAN_PRIMARY,
+                text=a["display_name"],
+                variable=sel_var,
+                font=("Inter", 12, "bold"),
+                text_color=theme.CYAN_PRIMARY if is_selected else theme.TEXT_PRIMARY,
+                checkmark_color=theme.BG_BASE,
+                fg_color=theme.CYAN_PRIMARY,
                 command=lambda p=pkg: self._select_open_app(p)
             )
-            btn_select.pack(side="right", padx=12, pady=8)
+            chk.pack(side="left", padx=10, pady=6)
 
-            self.open_app_card_widgets[pkg] = {
-                "frame": row,
-                "name_lbl": name_lbl,
-                "btn_select": btn_select
+            pkg_lbl = ctk.CTkLabel(
+                row,
+                text=f"({pkg})",
+                font=("Consolas", 10),
+                text_color=theme.TEXT_MUTED
+            )
+            pkg_lbl.pack(side="left", padx=6)
+
+            size_lbl = ctk.CTkLabel(
+                row,
+                text=f"{a['size_mb']} MB",
+                font=("Consolas", 10, "bold"),
+                text_color=theme.CYAN_PRIMARY if is_selected else theme.TEXT_MUTED
+            )
+            size_lbl.pack(side="right", padx=10)
+
+            self.open_app_row_items[pkg] = {
+                "row": row,
+                "var": sel_var,
+                "chk": chk,
+                "size_lbl": size_lbl,
             }
 
-            # Allow clicking anywhere on the card to select
-            def _bind_card(frame, p):
-                def _on_click(e):
+            # Allow clicking anywhere on the row to select this app
+            def _bind_row(r_widget, p=pkg):
+                def _click(e):
                     self._select_open_app(p)
-                frame.bind("<Button-1>", _on_click)
-                for child in frame.winfo_children():
-                    child.bind("<Button-1>", _on_click)
+                r_widget.bind("<Button-1>", _click)
 
-            _bind_card(info_frame, pkg)
+            _bind_row(row, pkg)
+            _bind_row(pkg_lbl, pkg)
+            _bind_row(size_lbl, pkg)
 
 
     def _execute_prepare_open_app_usb(self):
