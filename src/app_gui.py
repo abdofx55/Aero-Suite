@@ -1179,11 +1179,20 @@ class AeroSuiteApp(ctk.CTk):
                 self.log_terminal(f"Note: Auto Launch app '{self.auto_launch_app_filename}' was not selected for installation; Auto Launch will be skipped.", "warn")
 
         letter = self.current_usb.letter
-        auto_info = f"\n• Auto Launch App: {self.auto_launch_app_filename}" if auto_launch_pkg else ""
+        if len(selected) <= 15:
+            apps_list = "\n".join(f"  {i+1}. {a['display_name']} (~{a['size_mb']} MB)" for i, a in enumerate(selected))
+        else:
+            first_12 = "\n".join(f"  {i+1}. {a['display_name']} (~{a['size_mb']} MB)" for i, a in enumerate(selected[:12]))
+            remaining = len(selected) - 12
+            apps_list = f"{first_12}\n  ... and {remaining} more applications"
+
+        auto_info = f"\n\n🚀 Auto-Launch App: {self.auto_launch_app_filename}" if auto_launch_pkg else ""
         confirm_msg = (
-            f"Are you sure you want to prepare the Application Installation USB on drive {letter}?\n\n"
-            f"• Selected Applications: {len(selected)} APK(s){auto_info}\n\n"
-            f"This will write installation scripts and application packages to drive {letter}."
+            f"Are you sure you want to prepare Application Installation USB on drive {letter}?\n\n"
+            f"Selected Applications to Install ({len(selected)}):\n"
+            f"{apps_list}"
+            f"{auto_info}\n\n"
+            f"This will copy the packages and write automated vehicle installation scripts to the USB drive."
         )
         if not self._show_confirm_dialog("Confirm Application Installation USB", confirm_msg, confirm_text="⚡ Prepare Install USB"):
             self.log_terminal("Install Apps USB preparation cancelled by user.", "warn")
@@ -1461,9 +1470,18 @@ class AeroSuiteApp(ctk.CTk):
             return
 
         letter = self.current_usb.letter
+        pkg_to_name = {a["package"]: a["display_name"] for a in self.local_apks if a.get("package")}
+        if len(selected) <= 15:
+            apps_list = "\n".join(f"  {i+1}. {pkg_to_name.get(pkg, pkg)} ({pkg})" for i, pkg in enumerate(selected))
+        else:
+            first_12 = "\n".join(f"  {i+1}. {pkg_to_name.get(pkg, pkg)} ({pkg})" for i, pkg in enumerate(selected[:12]))
+            remaining = len(selected) - 12
+            apps_list = f"{first_12}\n  ... and {remaining} more packages"
+
         confirm_msg = (
-            f"Are you sure you want to prepare the Safe Uninstall USB on drive {letter}?\n\n"
-            f"• Target Applications: {len(selected)} package(s) to remove.\n\n"
+            f"Are you sure you want to prepare Safe Uninstall USB on drive {letter}?\n\n"
+            f"Selected Applications to Remove ({len(selected)}):\n"
+            f"{apps_list}\n\n"
             f"When plugged into the vehicle, the payload will safely purge these applications from both User and System partitions."
         )
         if not self._show_confirm_dialog("Confirm Safe Uninstall USB", confirm_msg, confirm_text="🗑 Prepare Uninstall USB", is_danger=True):
