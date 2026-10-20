@@ -1,0 +1,39 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging / builds
+build/
+dist/
+nuitka_dist/
+*.spec.bak
+*.exe
+*.rar
+*.zip
+AeroSuite_v1.0_Beta/
+
+# User backups (Ignore all car/personal backups, keep directory)
+backups/*
+!backups/.gitkeep
+
+# APKs repository (Ignore all third-party APKs, keep google_services and .gitkeep)
+apks/*
+!apks/google_services/
+!apks/google_services/**
+!apks/.gitkeep
+
+# User submitted diagnostic dumps & car logs
+Owners Logs/
+logs/
+*.log
+
+# Scratch and reverse-engineering folders
+jadx*/
+
+# IDE and Editor configs
+.idea/
+.vscode/
+
+# Keep required runtime binaries
+!adb.exe
