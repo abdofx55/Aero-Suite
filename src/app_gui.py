@@ -1035,8 +1035,6 @@ class AeroSuiteApp(ctk.CTk):
         is_checked = target["auto_var"].get()
         if is_checked:
             self.auto_launch_app_filename = fname
-            self.selected_install_apks[fname] = True
-            target["sel_var"].set(True)
 
             # In-place state update across all cards: NO recomposition, NO flicker!
             for f_key, card_widgets in self.install_cards_map.items():
@@ -1107,6 +1105,8 @@ class AeroSuiteApp(ctk.CTk):
             if target_app and target_app.get("package"):
                 auto_launch_pkg = target_app["package"]
                 self.log_terminal(f"Auto Launch target set: {target_app['display_name']} ({auto_launch_pkg})", "mint")
+            else:
+                self.log_terminal(f"Note: Auto Launch app '{self.auto_launch_app_filename}' was not selected for installation; Auto Launch will be skipped.", "warn")
 
         self.is_busy = True
         self.current_operation = "install_apps"
@@ -1552,16 +1552,10 @@ class AeroSuiteApp(ctk.CTk):
         )
         btn_refresh.pack(side="right", padx=(8, 0))
 
-        # Default to first available app if none is selected, so the button is immediately ready & enabled
-        if (not getattr(self, "selected_open_app_pkg", None) or self.selected_open_app_pkg not in self.allowed_packages) and self.local_apks:
-            first_pkg = next((a["package"] for a in self.local_apks if a.get("package")), "")
-            if first_pkg:
-                self.selected_open_app_pkg = first_pkg
-
         # Action Button Bar (Anchored strictly to bottom FIRST so it never disappears)
         is_running = (self.current_operation == "open_app")
         selected_pkg = getattr(self, "selected_open_app_pkg", "")
-        selected_app_info = next((a for a in self.local_apks if a["package"] == selected_pkg), None)
+        selected_app_info = next((a for a in self.local_apks if a["package"] == selected_pkg), None) if selected_pkg else None
         selected_title = selected_app_info["display_name"] if selected_app_info else ""
 
         if is_running:
@@ -1625,24 +1619,35 @@ class AeroSuiteApp(ctk.CTk):
         self.open_app_search_query = self.open_app_search_entry.get()
         self._render_open_app_rows()
 
-    def _select_open_app(self, pkg_name: str):
-        # Strict single selection enforcement: only ONE app can be selected at a time
-        self.selected_open_app_pkg = pkg_name
+    def _on_open_app_item_clicked(self, clicked_pkg: str):
+        # Strict single-selection toggle:
+        # If user clicks the currently selected app, deselect it. Otherwise select it.
+        if self.selected_open_app_pkg == clicked_pkg:
+            self.selected_open_app_pkg = ""
+        else:
+            self.selected_open_app_pkg = clicked_pkg
 
+        # Mutate every row item in-place using explicit select() and deselect()
         for p, item in self.open_app_row_items.items():
-            is_cur = (p == pkg_name)
-            item["var"].set(is_cur)
-            if hasattr(item["row"], "winfo_exists") and item["row"].winfo_exists():
-                item["row"].configure(
-                    fg_color=theme.CYAN_ALPHA_15 if is_cur else theme.SURFACE_2,
-                    border_color=theme.CYAN_PRIMARY if is_cur else theme.BORDER_SLATE
-                )
-                item["chk"].configure(
-                    text_color=theme.CYAN_PRIMARY if is_cur else theme.TEXT_PRIMARY
-                )
-                item["size_lbl"].configure(
-                    text_color=theme.CYAN_PRIMARY if is_cur else theme.TEXT_MUTED
-                )
+            is_cur = (p == self.selected_open_app_pkg and self.selected_open_app_pkg != "")
+            if is_cur:
+                item["chk"].select()
+                if hasattr(item["row"], "winfo_exists") and item["row"].winfo_exists():
+                    item["row"].configure(
+                        fg_color=theme.CYAN_ALPHA_15,
+                        border_color=theme.CYAN_PRIMARY
+                    )
+                    item["chk"].configure(text_color=theme.CYAN_PRIMARY)
+                    item["size_lbl"].configure(text_color=theme.CYAN_PRIMARY)
+            else:
+                item["chk"].deselect()
+                if hasattr(item["row"], "winfo_exists") and item["row"].winfo_exists():
+                    item["row"].configure(
+                        fg_color=theme.SURFACE_2,
+                        border_color=theme.BORDER_SLATE
+                    )
+                    item["chk"].configure(text_color=theme.TEXT_PRIMARY)
+                    item["size_lbl"].configure(text_color=theme.TEXT_MUTED)
 
         self._update_open_app_launch_button()
 
@@ -1694,7 +1699,7 @@ class AeroSuiteApp(ctk.CTk):
 
         for a in matching_apks:
             pkg = a["package"]
-            is_selected = (self.selected_open_app_pkg == pkg)
+            is_selected = (self.selected_open_app_pkg == pkg and self.selected_open_app_pkg != "")
 
             # Compact row matching Safe Uninstall exactly (height=36, corner_radius=8, border_width=1)
             row = ctk.CTkFrame(
@@ -1707,19 +1712,20 @@ class AeroSuiteApp(ctk.CTk):
             )
             row.pack(fill="x", pady=3, padx=2)
 
-            sel_var = ctk.BooleanVar(value=is_selected)
-
             chk = ctk.CTkCheckBox(
                 row,
                 text=a["display_name"],
-                variable=sel_var,
                 font=("Inter", 12, "bold"),
                 text_color=theme.CYAN_PRIMARY if is_selected else theme.TEXT_PRIMARY,
                 checkmark_color=theme.BG_BASE,
                 fg_color=theme.CYAN_PRIMARY,
-                command=lambda p=pkg: self._select_open_app(p)
+                command=lambda p=pkg: self._on_open_app_item_clicked(p)
             )
             chk.pack(side="left", padx=10, pady=6)
+            if is_selected:
+                chk.select()
+            else:
+                chk.deselect()
 
             pkg_lbl = ctk.CTkLabel(
                 row,
@@ -1739,15 +1745,14 @@ class AeroSuiteApp(ctk.CTk):
 
             self.open_app_row_items[pkg] = {
                 "row": row,
-                "var": sel_var,
                 "chk": chk,
                 "size_lbl": size_lbl,
             }
 
-            # Allow clicking anywhere on the row to select this app
+            # Allow clicking anywhere on the row to select/toggle this app
             def _bind_row(r_widget, p=pkg):
                 def _click(e):
-                    self._select_open_app(p)
+                    self._on_open_app_item_clicked(p)
                 r_widget.bind("<Button-1>", _click)
 
             _bind_row(row, pkg)
