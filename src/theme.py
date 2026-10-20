@@ -52,7 +52,7 @@ FONT_MONO        = ("Consolas", 10)
 FONT_MONO_SM     = ("Consolas", 9)
 
 # Application Version
-APP_VERSION      = "1.0 Beta"
+APP_VERSION      = "1.1 Beta"
 
 # Standardized Engineer Signature
 DEVELOPER_NAME   = "Abdelrhman Hamdy - Senior Software Engineer"

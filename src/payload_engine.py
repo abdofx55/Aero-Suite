@@ -132,12 +132,13 @@ def write_script_file(script_path: str, content: str):
 # ===========================================================================
 # 1. INSTALL APPS PAYLOAD (WITH PER-APP TARGET, PORTRAIT & BOOT SETTINGS)
 # ===========================================================================
-def prepare_install_apps_usb(usb_drive: str, selected_apks: list, options: dict = None, log_func=None, progress_func=None, cancel_check=None) -> bool:
+def prepare_install_apps_usb(usb_drive: str, selected_apks: list, options: dict = None, log_func=None, progress_func=None, cancel_check=None, auto_launch_package: str = "") -> bool:
     """
     Copies selected APKs to USB with per-app options:
     - install_target: 'user' (User App) or 'system' (System App)
     - force_portrait: bool (Overrides orientation in AXML)
     - block_boot: bool (Neutralizes boot receivers in AXML)
+    - auto_launch_package: str (Package name to launch immediately after install)
     """
     def _log(msg):
         if log_func:
@@ -336,6 +337,14 @@ fi
 
 sync
 echo "=== INSTALLATION COMPLETED ===" >> "$LOG_FILE"
+
+# 3. Auto-Launch Primary Application (if requested)
+AUTO_LAUNCH_PKG="{auto_launch_package.strip()}"
+if [ -n "$AUTO_LAUNCH_PKG" ]; then
+    echo "Auto-launching primary application: $AUTO_LAUNCH_PKG..." >> "$LOG_FILE"
+    sleep 2
+    monkey -p "$AUTO_LAUNCH_PKG" -c android.intent.category.LAUNCHER 1 >> "$LOG_FILE" 2>&1
+fi
 """
         write_script_file(os.path.join(update_dir, "custom_rep.sh"), script)
 
@@ -365,7 +374,10 @@ The automated payload script executes an intelligent dual-target deployment pipe
    - Force Portrait: Directly overrides the screenOrientation attribute (0x0101001e) in the compiled binary AndroidManifest.xml when enabled.
    - Block Boot Launch: Neutralizes BOOT_COMPLETED receiver actions to prevent background auto-start and conserve RAM on vehicle startup when enabled.
 
-5. Verification & Completion:
+5. Auto-Launch Post-Installation:
+   - Primary Launch Target: {auto_launch_package.strip() or 'None (Manual Launch)'}
+
+6. Verification & Completion:
    - Synchronizes filesystem buffers (sync) and writes complete execution status to the USB log.
 
 ============================================================
@@ -379,7 +391,7 @@ The automated payload script executes an intelligent dual-target deployment pipe
 ============================================================
 3. STAGED APPLICATIONS ({total_apks} APKS)
 ============================================================
-""" + "\n".join([f" • {a['display_name']} ({a['package']})\n   - Target: {'System App (/system/priv-app)' if a.get('install_target', 'user') == 'system' else 'User App (/data/app)'} | Force Portrait: {'Enabled' if a.get('force_portrait', False) else 'Disabled'} | Block Boot: {'Enabled' if a.get('block_boot', False) else 'Disabled'}" for a in selected_apks]) + f"""
+""" + "\n".join([f" • {a['display_name']} ({a['package']})\n   - Target: {'System App (/system/priv-app)' if a.get('install_target', 'user') == 'system' else 'User App (/data/app)'} | Auto-Launch: {'YES' if a['package'] == auto_launch_package.strip() else 'No'} | Force Portrait: {'Enabled' if a.get('force_portrait', False) else 'Disabled'} | Block Boot: {'Enabled' if a.get('block_boot', False) else 'Disabled'}" for a in selected_apks]) + f"""
 
 {SIGNATURE_BANNER}
 """

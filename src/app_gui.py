@@ -77,6 +77,10 @@ class AeroSuiteApp(ctk.CTk):
         self.per_app_portrait = {a["filename"]: False for a in self.local_apks}
         self.per_app_target = {a["filename"]: "user" for a in self.local_apks}   # "user" by default, or "system"
         self.per_app_boot = {a["filename"]: False for a in self.local_apks}      # False by default (unselected)
+        self.auto_launch_app_filename = None                                     # Single selection (exclusive)
+
+        # Drive selection preference
+        self.preferred_usb_letter = None
 
         # Safe Uninstall selection state
         self.selected_uninstall_pkgs = {a["package"]: False for a in self.local_apks if a["package"]}
@@ -121,6 +125,31 @@ class AeroSuiteApp(ctk.CTk):
         except Exception:
             pass
 
+    def _rescan_local_apks(self):
+        """Re-scans the apks/ directory and updates internal repository lists in-place."""
+        self.local_apks = scan_local_apks(APKS_DIR)
+        self.allowed_packages = {a["package"] for a in self.local_apks if a["package"]}
+        current_filenames = {a["filename"] for a in self.local_apks}
+
+        # Preserve existing selections while adding new APKs
+        for a in self.local_apks:
+            f = a["filename"]
+            pkg = a["package"]
+            if f not in self.selected_install_apks: self.selected_install_apks[f] = False
+            if f not in self.per_app_portrait: self.per_app_portrait[f] = False
+            if f not in self.per_app_target: self.per_app_target[f] = "user"
+            if f not in self.per_app_boot: self.per_app_boot[f] = False
+            if pkg and pkg not in self.selected_uninstall_pkgs: self.selected_uninstall_pkgs[pkg] = False
+
+        if self.auto_launch_app_filename and self.auto_launch_app_filename not in current_filenames:
+            self.auto_launch_app_filename = None
+
+        if hasattr(self, "selected_open_app_pkg") and self.selected_open_app_pkg not in self.allowed_packages:
+            self.selected_open_app_pkg = ""
+
+        self.log_terminal(f"🔄 APK Repository refreshed: {len(self.local_apks)} applications found in apks/ folder.", "mint")
+        self._refresh_active_view()
+
     # -----------------------------------------------------------------------
     # Top Header & Status Bar
     # -----------------------------------------------------------------------
@@ -164,7 +193,7 @@ class AeroSuiteApp(ctk.CTk):
         )
         sub_label.pack(side="left")
 
-        # Right USB indicator
+        # Right USB indicator & Interactive Drive Selector
         right_box = ctk.CTkFrame(header, fg_color="transparent")
         right_box.pack(side="right", padx=20, pady=10)
 
@@ -176,13 +205,24 @@ class AeroSuiteApp(ctk.CTk):
         )
         self.usb_status_dot.pack(side="left", padx=(0, 6))
 
-        self.usb_status_text = ctk.CTkLabel(
+        self.usb_dropdown_var = ctk.StringVar(value="NO USB FLASH DETECTED")
+        self.usb_dropdown = ctk.CTkOptionMenu(
             right_box,
-            text="NO USB FLASH DETECTED",
-            font=("Space Grotesk", 12, "bold"),
-            text_color=theme.TEXT_PRIMARY
+            values=["NO USB FLASH DETECTED"],
+            variable=self.usb_dropdown_var,
+            width=290,
+            height=28,
+            font=("Space Grotesk", 11, "bold"),
+            dropdown_font=("Space Grotesk", 11),
+            fg_color=theme.SURFACE_2,
+            button_color=theme.SURFACE_3,
+            button_hover_color=theme.CYAN_HOVER,
+            dropdown_fg_color=theme.SURFACE_1,
+            dropdown_hover_color=theme.SURFACE_3,
+            text_color=theme.TEXT_PRIMARY,
+            command=self._on_user_selected_drive
         )
-        self.usb_status_text.pack(side="left", padx=(0, 12))
+        self.usb_dropdown.pack(side="left", padx=(0, 10))
 
         btn_refresh = ctk.CTkButton(
             right_box,
@@ -569,19 +609,66 @@ class AeroSuiteApp(ctk.CTk):
     # -----------------------------------------------------------------------
     # USB Drive Monitoring & Auto-Sync
     # -----------------------------------------------------------------------
+    def _on_user_selected_drive(self, selection_str: str):
+        if not hasattr(self, "all_drives") or not self.all_drives:
+            return
+        chosen = None
+        for d in self.all_drives:
+            if selection_str.startswith(d.letter[:2]) or d.letter.startswith(selection_str[:2]):
+                chosen = d
+                break
+        if chosen:
+            self.current_usb = chosen
+            self.preferred_usb_letter = chosen.letter
+            self.log_terminal(f"Target USB Drive switched to: {chosen.letter} [{chosen.label}] ({chosen.free_gb:.1f} GB free)", "mint")
+            self._update_backup_sync_button_state()
+
     def _refresh_usb_drives(self):
         self.all_drives = get_removable_drives()
         if self.all_drives:
-            # Prefer drive with car backup or latest mounted
-            backup_drive = next((d for d in self.all_drives if d.has_backup), None)
-            self.current_usb = backup_drive or self.all_drives[0]
+            drive_options = []
+            chosen_drive = None
+
+            # 1. Prefer user-selected drive if it's still connected
+            if self.preferred_usb_letter:
+                chosen_drive = next((d for d in self.all_drives if d.letter == self.preferred_usb_letter), None)
+
+            # 2. Otherwise prefer drive with car backup
+            if not chosen_drive:
+                chosen_drive = next((d for d in self.all_drives if d.has_backup), None)
+
+            # 3. Fallback to first drive
+            if not chosen_drive:
+                chosen_drive = self.all_drives[0]
+
+            self.current_usb = chosen_drive
+            self.preferred_usb_letter = chosen_drive.letter
+
+            chosen_label = ""
+            for d in self.all_drives:
+                lbl = f"{d.letter[:2]} [{d.label or 'USB'}] ({d.free_gb:.1f} GB free)"
+                if getattr(d, "is_restore_ready", False):
+                    lbl += " 🔄 RESTORE"
+                elif d.has_backup:
+                    lbl += " ★ BACKUP"
+                drive_options.append(lbl)
+                if d.letter == chosen_drive.letter:
+                    chosen_label = lbl
+
+            self.usb_dropdown.configure(values=drive_options)
+            self.usb_dropdown_var.set(chosen_label)
             self.usb_status_dot.configure(text="●", text_color=theme.MINT_SUCCESS)
-            info_txt = f"USB: {self.current_usb.label} ({self.current_usb.letter}) [{self.current_usb.fs_name}] — {self.current_usb.free_gb} GB Free"
-            if getattr(self.current_usb, "is_restore_ready", False):
-                info_txt += "  [🔄 RESTORE PAYLOAD READY FOR CAR]"
-            elif self.current_usb.has_backup:
-                info_txt += "  [★ CAR BACKUP FOUND]"
-            self.usb_status_text.configure(text=info_txt)
+
+            # Warn user if multiple drives are plugged in (prevent accidental SD card / memory card wipe)
+            if len(self.all_drives) > 1:
+                if getattr(self, "_last_warned_drive_count", 0) != len(self.all_drives):
+                    self._last_warned_drive_count = len(self.all_drives)
+                    self.log_terminal(
+                        f"⚠️ Multiple removable drives detected ({len(self.all_drives)} drives)! Please verify the target USB drive selected in the dropdown to avoid unintended writes to memory cards.",
+                        "warn"
+                    )
+            else:
+                self._last_warned_drive_count = 1
 
             # Auto-prompt if backup found
             if self.current_usb.has_backup:
@@ -593,13 +680,18 @@ class AeroSuiteApp(ctk.CTk):
         else:
             self.current_usb = None
             self._last_logged_backup_drive = None
+            self._last_warned_drive_count = 0
             self.usb_status_dot.configure(text="○", text_color=theme.CRIMSON_DANGER)
-            self.usb_status_text.configure(text="NO USB FLASH DETECTED (Insert USB Drive)")
+            self.usb_dropdown.configure(values=["NO USB FLASH DETECTED"])
+            self.usb_dropdown_var.set("NO USB FLASH DETECTED")
 
-        # Dynamically update backup view if open (only when not actively syncing)
+        self._update_backup_sync_button_state()
+
+    def _update_backup_sync_button_state(self):
+        """Dynamically updates the backup view sync button state to reflect the currently selected USB drive."""
         if hasattr(self, "btn_sync_vault") and self.btn_sync_vault.winfo_exists() and self.current_operation != "sync_vault":
             usb_has_b = bool(self.current_usb and self.current_usb.has_backup)
-            already_vaulted = find_existing_vault_backup(self.current_usb.letter, BACKUPS_DIR) if usb_has_b else ""
+            already_vaulted = find_existing_vault_backup(self.current_usb.letter, BACKUPS_DIR) if (usb_has_b and self.current_usb) else ""
 
             if not usb_has_b:
                 self.btn_sync_vault.configure(
@@ -724,7 +816,15 @@ class AeroSuiteApp(ctk.CTk):
             text_color=theme.TEXT_MUTED,
             command=lambda: self._toggle_install_all(False)
         )
-        btn_none.pack(side="left", padx=(0, 12))
+        btn_none.pack(side="left", padx=(0, 6))
+
+        btn_refresh = ctk.CTkButton(
+            ctrl_frame, text="🔄 Refresh", width=85, height=28, font=("Inter", 11, "bold"),
+            fg_color=theme.SURFACE_2, hover_color=theme.SURFACE_3,
+            text_color=theme.CYAN_PRIMARY,
+            command=self._rescan_local_apks
+        )
+        btn_refresh.pack(side="left", padx=(0, 12))
 
         # Realtime Search Entry (Contains matching)
         self.install_search_entry = ctk.CTkEntry(
@@ -740,13 +840,7 @@ class AeroSuiteApp(ctk.CTk):
             self.install_search_entry.insert(0, self.install_search_query)
         self.install_search_entry.bind("<KeyRelease>", self._on_install_search_change)
 
-        # Scrollable container for cards
-        self.install_scroll = ctk.CTkScrollableFrame(self.content_panel, fg_color="transparent")
-        self.install_scroll.pack(fill="both", expand=True, padx=20, pady=(0, 10))
-
-        self._render_install_apk_cards()
-
-        # Action Button & In-View Cancel
+        # Action Button Bar & In-View Cancel (Anchored strictly to bottom FIRST so it never gets clipped)
         is_running = (self.current_operation == "install_apps")
         if is_running:
             d_text = "⏳ Loading... Preparing Install USB..."
@@ -765,7 +859,7 @@ class AeroSuiteApp(ctk.CTk):
             d_state = "normal"
 
         btn_bar = ctk.CTkFrame(self.content_panel, fg_color="transparent")
-        btn_bar.pack(fill="x", padx=20, pady=(0, 16))
+        btn_bar.pack(side="bottom", fill="x", padx=20, pady=(0, 16))
 
         btn_deploy = ctk.CTkButton(
             btn_bar,
@@ -789,6 +883,12 @@ class AeroSuiteApp(ctk.CTk):
                 command=self.cancel_current_operation
             )
             btn_cancel.pack(side="left", padx=(10, 0))
+
+        # Scrollable container for cards (claims remaining area above button bar)
+        self.install_scroll = ctk.CTkScrollableFrame(self.content_panel, fg_color="transparent")
+        self.install_scroll.pack(side="top", fill="both", expand=True, padx=20, pady=(0, 10))
+
+        self._render_install_apk_cards()
 
     def _on_install_search_change(self, event=None):
         self.install_search_query = self.install_search_entry.get()
@@ -827,7 +927,11 @@ class AeroSuiteApp(ctk.CTk):
 
             sel_var = ctk.BooleanVar(value=self.selected_install_apks.get(f, False))
             def _on_chk(fname=f, v=sel_var):
-                self.selected_install_apks[fname] = v.get()
+                is_selected = v.get()
+                self.selected_install_apks[fname] = is_selected
+                if not is_selected and self.auto_launch_app_filename == fname:
+                    self.auto_launch_app_filename = None
+                    self._render_install_apk_cards()
 
             chk = ctk.CTkCheckBox(
                 top_row, text=a["display_name"], variable=sel_var,
@@ -847,7 +951,7 @@ class AeroSuiteApp(ctk.CTk):
                 font=("Consolas", 10, "bold"), text_color=theme.CYAN_PRIMARY
             ).pack(side="right")
 
-            # Bottom Row: Target SegmentedButton + Force Portrait Checkbox + Block Boot Launch Checkbox
+            # Bottom Row: Target SegmentedButton + Auto Launch Checkbox + Force Portrait Checkbox + Block Boot Launch Checkbox
             bot_row = ctk.CTkFrame(card, fg_color="transparent")
             bot_row.pack(fill="x", padx=10, pady=(2, 6))
 
@@ -871,6 +975,27 @@ class AeroSuiteApp(ctk.CTk):
             )
             target_seg.set(cur_target)
             target_seg.pack(side="left", padx=(0, 16))
+
+            # Auto Launch Checkbox (FIRST option before Force Portrait and Block Boot Launch, default: False / Unchecked, single selection)
+            is_auto = (self.auto_launch_app_filename == f)
+            auto_var = ctk.BooleanVar(value=is_auto)
+            def _on_auto_change(fname=f, v=auto_var):
+                if v.get():
+                    self.auto_launch_app_filename = fname
+                    self.selected_install_apks[fname] = True
+                else:
+                    if self.auto_launch_app_filename == fname:
+                        self.auto_launch_app_filename = None
+                self._render_install_apk_cards()
+
+            chk_auto = ctk.CTkCheckBox(
+                bot_row, text="Auto Launch", variable=auto_var,
+                font=("Inter", 10, "bold" if is_auto else "normal"),
+                text_color=theme.MINT_SUCCESS if is_auto else theme.TEXT_PRIMARY,
+                checkmark_color=theme.BG_BASE, fg_color=theme.MINT_SUCCESS,
+                width=16, command=_on_auto_change
+            )
+            chk_auto.pack(side="left", padx=(0, 16))
 
             # Force Portrait checkbox (Default: False / Unchecked)
             port_var = ctk.BooleanVar(value=self.per_app_portrait.get(f, False))
@@ -904,6 +1029,8 @@ class AeroSuiteApp(ctk.CTk):
             f = a["filename"]
             if not q or (q in a["display_name"].lower() or q in a["package"].lower() or q in f.lower()):
                 self.selected_install_apks[f] = state
+                if not state and self.auto_launch_app_filename == f:
+                    self.auto_launch_app_filename = None
         self._render_install_apk_cards()
 
     def _execute_prepare_install_usb(self):
@@ -931,6 +1058,13 @@ class AeroSuiteApp(ctk.CTk):
             self.log_terminal("No APKs selected for installation.", "warn")
             return
 
+        auto_launch_pkg = ""
+        if self.auto_launch_app_filename:
+            target_app = next((a for a in selected if a["filename"] == self.auto_launch_app_filename), None)
+            if target_app and target_app.get("package"):
+                auto_launch_pkg = target_app["package"]
+                self.log_terminal(f"Auto Launch target set: {target_app['display_name']} ({auto_launch_pkg})", "mint")
+
         self.is_busy = True
         self.current_operation = "install_apps"
         self.start_progress("Preparing Install Apps USB")
@@ -939,6 +1073,7 @@ class AeroSuiteApp(ctk.CTk):
         def _worker():
             ok = payload_engine.prepare_install_apps_usb(
                 self.current_usb.letter, selected,
+                auto_launch_package=auto_launch_pkg,
                 log_func=lambda m: self.log_terminal(m, "cyan"),
                 progress_func=self.update_progress,
                 cancel_check=self.cancel_event.is_set
@@ -1003,7 +1138,15 @@ class AeroSuiteApp(ctk.CTk):
             text_color=theme.TEXT_MUTED,
             command=lambda: self._toggle_uninstall_all(False)
         )
-        btn_none.pack(side="left", padx=(0, 12))
+        btn_none.pack(side="left", padx=(0, 6))
+
+        btn_refresh = ctk.CTkButton(
+            ctrl_frame, text="🔄 Refresh", width=85, height=28, font=("Inter", 11, "bold"),
+            fg_color=theme.SURFACE_2, hover_color=theme.SURFACE_3,
+            text_color=theme.CYAN_PRIMARY,
+            command=self._rescan_local_apks
+        )
+        btn_refresh.pack(side="left", padx=(0, 12))
 
         # Realtime Search Entry (Contains matching)
         self.uninstall_search_entry = ctk.CTkEntry(
@@ -1019,13 +1162,7 @@ class AeroSuiteApp(ctk.CTk):
             self.uninstall_search_entry.insert(0, self.uninstall_search_query)
         self.uninstall_search_entry.bind("<KeyRelease>", self._on_uninstall_search_change)
 
-        # Scrollable container
-        self.uninstall_scroll = ctk.CTkScrollableFrame(self.content_panel, fg_color="transparent")
-        self.uninstall_scroll.pack(fill="both", expand=True, padx=20, pady=(0, 10))
-
-        self._render_uninstall_apk_rows()
-
-        # Action Button & In-View Cancel
+        # Action Button Bar & In-View Cancel (Anchored strictly to bottom FIRST so it never gets clipped)
         is_running = (self.current_operation == "uninstall_apps")
         if is_running:
             d_text = "⏳ Loading... Preparing Safe Uninstall USB..."
@@ -1044,7 +1181,7 @@ class AeroSuiteApp(ctk.CTk):
             d_state = "normal"
 
         btn_bar = ctk.CTkFrame(self.content_panel, fg_color="transparent")
-        btn_bar.pack(fill="x", padx=20, pady=(0, 16))
+        btn_bar.pack(side="bottom", fill="x", padx=20, pady=(0, 16))
 
         btn_uninstall = ctk.CTkButton(
             btn_bar,
@@ -1068,6 +1205,12 @@ class AeroSuiteApp(ctk.CTk):
                 command=self.cancel_current_operation
             )
             btn_cancel.pack(side="left", padx=(10, 0))
+
+        # Scrollable container (claims remaining area above button bar)
+        self.uninstall_scroll = ctk.CTkScrollableFrame(self.content_panel, fg_color="transparent")
+        self.uninstall_scroll.pack(side="top", fill="both", expand=True, padx=20, pady=(0, 10))
+
+        self._render_uninstall_apk_rows()
 
     def _on_uninstall_search_change(self, event=None):
         self.uninstall_search_query = self.uninstall_search_entry.get()
@@ -1336,7 +1479,7 @@ class AeroSuiteApp(ctk.CTk):
             justify="left"
         ).pack(padx=12, pady=6, anchor="w")
 
-        # Search Strip
+        # Controls & Search Strip
         ctrl_frame = ctk.CTkFrame(self.content_panel, fg_color="transparent")
         ctrl_frame.pack(fill="x", padx=20, pady=(0, 8))
 
@@ -1353,13 +1496,20 @@ class AeroSuiteApp(ctk.CTk):
             self.open_app_search_entry.insert(0, self.open_app_search_query)
         self.open_app_search_entry.bind("<KeyRelease>", self._on_open_app_search_change)
 
-        # Scrollable container for app cards
-        self.open_app_scroll = ctk.CTkScrollableFrame(self.content_panel, fg_color="transparent")
-        self.open_app_scroll.pack(fill="both", expand=True, padx=20, pady=(0, 10))
+        btn_refresh = ctk.CTkButton(
+            ctrl_frame,
+            text="🔄 Refresh",
+            width=85,
+            height=28,
+            font=("Inter", 11, "bold"),
+            fg_color=theme.SURFACE_2,
+            hover_color=theme.SURFACE_3,
+            text_color=theme.CYAN_PRIMARY,
+            command=self._rescan_local_apks
+        )
+        btn_refresh.pack(side="right", padx=(8, 0))
 
-        self._render_open_app_rows()
-
-        # Action Button Bar
+        # Action Button Bar (Anchored strictly to bottom FIRST so it never disappears)
         is_running = (self.current_operation == "open_app")
         selected_pkg = getattr(self, "selected_open_app_pkg", "")
         selected_app_info = next((a for a in self.local_apks if a["package"] == selected_pkg), None)
@@ -1387,9 +1537,9 @@ class AeroSuiteApp(ctk.CTk):
             d_state = "normal"
 
         btn_bar = ctk.CTkFrame(self.content_panel, fg_color="transparent")
-        btn_bar.pack(fill="x", padx=20, pady=(0, 16))
+        btn_bar.pack(side="bottom", fill="x", padx=20, pady=(0, 16))
 
-        btn_launch = ctk.CTkButton(
+        self.btn_open_app_launch = ctk.CTkButton(
             btn_bar,
             text=d_text,
             height=44,
@@ -1400,7 +1550,7 @@ class AeroSuiteApp(ctk.CTk):
             state=d_state,
             command=self._execute_prepare_open_app_usb
         )
-        btn_launch.pack(side="left", fill="x", expand=True)
+        self.btn_open_app_launch.pack(side="left", fill="x", expand=True)
 
         if is_running:
             btn_cancel = ctk.CTkButton(
@@ -1411,18 +1561,56 @@ class AeroSuiteApp(ctk.CTk):
             )
             btn_cancel.pack(side="left", padx=(10, 0))
 
+        # Scrollable container for app cards (claims remaining area above button bar)
+        self.open_app_scroll = ctk.CTkScrollableFrame(self.content_panel, fg_color="transparent")
+        self.open_app_scroll.pack(side="top", fill="both", expand=True, padx=20, pady=(0, 10))
+
+        self.open_app_card_widgets = {}
+        self._render_open_app_rows()
+
     def _on_open_app_search_change(self, event=None):
         self.open_app_search_query = self.open_app_search_entry.get()
         self._render_open_app_rows()
 
     def _select_open_app(self, pkg_name: str):
         self.selected_open_app_pkg = pkg_name
-        self._refresh_active_view()
+
+        # Update card visuals in-place without tearing down the view or losing scroll position
+        for p, w_dict in self.open_app_card_widgets.items():
+            is_cur = (p == pkg_name)
+            if hasattr(w_dict["frame"], "winfo_exists") and w_dict["frame"].winfo_exists():
+                w_dict["frame"].configure(
+                    fg_color=theme.CYAN_ALPHA_15 if is_cur else theme.SURFACE_2,
+                    border_color=theme.CYAN_PRIMARY if is_cur else theme.BORDER_SLATE
+                )
+                w_dict["name_lbl"].configure(
+                    text_color=theme.CYAN_PRIMARY if is_cur else theme.TEXT_PRIMARY
+                )
+                w_dict["btn_select"].configure(
+                    text="✓ SELECTED" if is_cur else "SELECT",
+                    fg_color=theme.CYAN_PRIMARY if is_cur else theme.SURFACE_3,
+                    hover_color=theme.CYAN_HOVER if is_cur else theme.SURFACE_1,
+                    text_color=theme.SURFACE_0 if is_cur else theme.CYAN_PRIMARY
+                )
+
+        # Update launch button text & state in-place
+        if hasattr(self, "btn_open_app_launch") and self.btn_open_app_launch.winfo_exists():
+            if not self.is_busy and self.current_operation != "open_app":
+                selected_app_info = next((a for a in self.local_apks if a["package"] == pkg_name), None)
+                selected_title = selected_app_info["display_name"] if selected_app_info else pkg_name
+                self.btn_open_app_launch.configure(
+                    text=f"🚀 PREPARE LAUNCH USB FOR: {selected_title.upper()}",
+                    fg_color=theme.CYAN_PRIMARY,
+                    hover_color=theme.CYAN_HOVER,
+                    text_color=theme.SURFACE_0,
+                    state="normal"
+                )
 
     def _render_open_app_rows(self):
         for w in self.open_app_scroll.winfo_children():
             w.destroy()
 
+        self.open_app_card_widgets = {}
         q = self.open_app_search_query.strip().lower()
         matching_apks = [
             a for a in self.local_apks
@@ -1488,6 +1676,12 @@ class AeroSuiteApp(ctk.CTk):
             )
             btn_select.pack(side="right", padx=12, pady=8)
 
+            self.open_app_card_widgets[pkg] = {
+                "frame": row,
+                "name_lbl": name_lbl,
+                "btn_select": btn_select
+            }
+
             # Allow clicking anywhere on the card to select
             def _bind_card(frame, p):
                 def _on_click(e):
@@ -1497,6 +1691,7 @@ class AeroSuiteApp(ctk.CTk):
                     child.bind("<Button-1>", _on_click)
 
             _bind_card(info_frame, pkg)
+
 
     def _execute_prepare_open_app_usb(self):
         if not self._check_usb_ready(): return
