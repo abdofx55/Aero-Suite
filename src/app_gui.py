@@ -53,6 +53,205 @@ ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("dark-blue")
 
 
+class AeroModalDialog(ctk.CTkToplevel):
+    """
+    A sleek, dark-themed modal dialog matching Aero Suite's automotive design.
+    Supports Confirmation (Yes/No), Success (OK), and Error (OK) dialog modes.
+    """
+    def __init__(
+        self,
+        parent,
+        title: str,
+        message: str,
+        dialog_type: str = "confirm",  # "confirm", "success", "error"
+        confirm_text: str = "Proceed",
+        cancel_text: str = "Cancel",
+        is_danger: bool = False,
+        target_drive: str = "",
+        details: str = ""
+    ):
+        super().__init__(parent)
+        self.result = False
+        self.title(title)
+        self.resizable(False, False)
+        self.configure(fg_color=theme.SURFACE_1)
+
+        # Make modal & transient
+        self.transient(parent)
+        try:
+            self.grab_set()
+        except Exception:
+            pass
+
+        # Accent colors based on type
+        if dialog_type == "success":
+            accent_color = theme.MINT_SUCCESS
+            icon_char = "✓"
+            header_title = title or "Operation Successful"
+        elif dialog_type == "error":
+            accent_color = theme.CRIMSON_DANGER
+            icon_char = "✗"
+            header_title = title or "Operation Failed"
+        else:  # "confirm"
+            accent_color = theme.CRIMSON_DANGER if is_danger else theme.CYAN_PRIMARY
+            icon_char = "⚠️" if is_danger else "⚡"
+            header_title = title or "Confirm Operation"
+
+        # Outer border frame
+        container = ctk.CTkFrame(
+            self,
+            fg_color=theme.SURFACE_1,
+            corner_radius=12,
+            border_width=2,
+            border_color=accent_color
+        )
+        container.pack(fill="both", expand=True, padx=2, pady=2)
+
+        # Header Strip
+        hdr = ctk.CTkFrame(container, fg_color="transparent")
+        hdr.pack(fill="x", padx=20, pady=(16, 8))
+
+        ctk.CTkLabel(
+            hdr,
+            text=icon_char,
+            font=("Space Grotesk", 20, "bold"),
+            text_color=accent_color
+        ).pack(side="left", padx=(0, 10))
+
+        ctk.CTkLabel(
+            hdr,
+            text=header_title,
+            font=("Space Grotesk", 14, "bold"),
+            text_color=theme.TEXT_PRIMARY
+        ).pack(side="left")
+
+        # Target Drive Badge (if specified)
+        if target_drive:
+            drive_bar = ctk.CTkFrame(
+                container,
+                fg_color=theme.SURFACE_2,
+                corner_radius=6,
+                border_width=1,
+                border_color=theme.BORDER_SLATE
+            )
+            drive_bar.pack(fill="x", padx=20, pady=(0, 10))
+            ctk.CTkLabel(
+                drive_bar,
+                text=f"💾 Target USB Drive:  {target_drive}",
+                font=("Consolas", 11, "bold"),
+                text_color=theme.CYAN_PRIMARY
+            ).pack(padx=12, pady=6, anchor="w")
+
+        # Message Content
+        msg_box = ctk.CTkFrame(container, fg_color="transparent")
+        msg_box.pack(fill="both", expand=True, padx=20, pady=(0, 12))
+
+        ctk.CTkLabel(
+            msg_box,
+            text=message,
+            font=("Inter", 12),
+            text_color=theme.TEXT_PRIMARY,
+            justify="left",
+            wraplength=480
+        ).pack(anchor="w")
+
+        if details:
+            det_box = ctk.CTkFrame(container, fg_color=theme.SURFACE_2, corner_radius=6)
+            det_box.pack(fill="x", padx=20, pady=(0, 12))
+            ctk.CTkLabel(
+                det_box,
+                text=details,
+                font=("Consolas", 10),
+                text_color=theme.TEXT_MUTED,
+                justify="left",
+                wraplength=470
+            ).pack(padx=10, pady=6, anchor="w")
+
+        # Bottom Button Bar
+        btn_bar = ctk.CTkFrame(container, fg_color="transparent")
+        btn_bar.pack(fill="x", padx=20, pady=(0, 16))
+
+        if dialog_type == "confirm":
+            btn_cancel = ctk.CTkButton(
+                btn_bar,
+                text=cancel_text,
+                width=110,
+                height=36,
+                font=("Inter", 12, "bold"),
+                fg_color=theme.SURFACE_2,
+                hover_color=theme.SURFACE_3,
+                text_color=theme.TEXT_MUTED,
+                command=self._on_cancel
+            )
+            btn_cancel.pack(side="right", padx=(10, 0))
+
+            btn_confirm = ctk.CTkButton(
+                btn_bar,
+                text=confirm_text,
+                width=170,
+                height=36,
+                font=("Space Grotesk", 12, "bold"),
+                fg_color=accent_color,
+                hover_color=theme.CRIMSON_HOVER if is_danger else theme.CYAN_HOVER,
+                text_color=theme.TEXT_PRIMARY if is_danger else theme.BG_BASE,
+                command=self._on_confirm
+            )
+            btn_confirm.pack(side="right")
+        else:
+            btn_ok = ctk.CTkButton(
+                btn_bar,
+                text="OK",
+                width=120,
+                height=36,
+                font=("Space Grotesk", 12, "bold"),
+                fg_color=accent_color,
+                hover_color=theme.CYAN_HOVER,
+                text_color=theme.BG_BASE if dialog_type == "success" else theme.TEXT_PRIMARY,
+                command=self._on_confirm
+            )
+            btn_ok.pack(side="right")
+
+        self.protocol("WM_DELETE_WINDOW", self._on_cancel)
+        self.bind("<Escape>", lambda e: self._on_cancel())
+        self.bind("<Return>", lambda e: self._on_confirm())
+
+        # Center on parent window
+        self.after(10, self._center_on_parent)
+
+    def _center_on_parent(self):
+        try:
+            self.update_idletasks()
+            pw = self.master.winfo_width()
+            ph = self.master.winfo_height()
+            px = self.master.winfo_x()
+            py = self.master.winfo_y()
+            w = self.winfo_width() or 520
+            h = self.winfo_height() or 240
+            x = px + max(0, (pw - w) // 2)
+            y = py + max(0, (ph - h) // 2)
+            self.geometry(f"+{x}+{y}")
+            self.attributes("-topmost", True)
+            self.focus_set()
+        except Exception:
+            pass
+
+    def _on_confirm(self):
+        self.result = True
+        try:
+            self.grab_release()
+        except Exception:
+            pass
+        self.destroy()
+
+    def _on_cancel(self):
+        self.result = False
+        try:
+            self.grab_release()
+        except Exception:
+            pass
+        self.destroy()
+
+
 class AeroSuiteApp(ctk.CTk):
     def __init__(self):
         super().__init__()
@@ -1177,6 +1376,17 @@ class AeroSuiteApp(ctk.CTk):
             else:
                 self.log_terminal(f"Note: Auto Launch app '{self.auto_launch_app_filename}' was not selected for installation; Auto Launch will be skipped.", "warn")
 
+        letter = self.current_usb.letter
+        auto_info = f"\n• Auto Launch App: {self.auto_launch_app_filename}" if auto_launch_pkg else ""
+        confirm_msg = (
+            f"Are you sure you want to prepare the Application Installation USB on drive {letter}?\n\n"
+            f"• Selected Applications: {len(selected)} APK(s){auto_info}\n\n"
+            f"This will write installation scripts and application packages to drive {letter}."
+        )
+        if not self._show_confirm_dialog("Confirm Application Installation USB", confirm_msg, confirm_text="⚡ Prepare Install USB"):
+            self.log_terminal("Install Apps USB preparation cancelled by user.", "warn")
+            return
+
         self.is_busy = True
         self.current_operation = "install_apps"
         self.start_progress("Preparing Install Apps USB")
@@ -1184,7 +1394,7 @@ class AeroSuiteApp(ctk.CTk):
 
         def _worker():
             ok = payload_engine.prepare_install_apps_usb(
-                self.current_usb.letter, selected,
+                letter, selected,
                 auto_launch_package=auto_launch_pkg,
                 log_func=lambda m: self.log_terminal(m, "cyan"),
                 progress_func=self.update_progress,
@@ -1199,9 +1409,20 @@ class AeroSuiteApp(ctk.CTk):
             elif ok:
                 self.log_terminal("Install Apps USB Ready! Safe to plug into car.", "mint")
                 self.finish_progress(True, "Install Apps USB Ready")
+                self.after(0, lambda: self._show_success_dialog(
+                    "Install Apps USB Ready",
+                    f"Successfully prepared Install Applications USB on drive {letter}!\n\n"
+                    f"• {len(selected)} application(s) packaged and verified.\n\n"
+                    f"Next step: Safely unplug this USB, insert it into your vehicle's USB port, and installation will begin."
+                ))
             else:
                 self.log_terminal("Failed to prepare Install Apps USB.", "danger")
                 self.finish_progress(False, "Failed to prepare Install Apps USB")
+                self.after(0, lambda: self._show_error_dialog(
+                    "Install Apps Preparation Failed",
+                    f"Failed to prepare Install Applications USB on drive {letter}.\n\n"
+                    f"Please check that the USB drive is connected, has write permissions, and has sufficient free disk space."
+                ))
             self.after(0, self._refresh_active_view)
 
         threading.Thread(target=_worker, daemon=True).start()
@@ -1441,6 +1662,16 @@ class AeroSuiteApp(ctk.CTk):
             self.log_terminal("No packages selected for uninstall.", "warn")
             return
 
+        letter = self.current_usb.letter
+        confirm_msg = (
+            f"Are you sure you want to prepare the Safe Uninstall USB on drive {letter}?\n\n"
+            f"• Target Applications: {len(selected)} package(s) to remove.\n\n"
+            f"When plugged into the vehicle, the payload will safely purge these applications from both User and System partitions."
+        )
+        if not self._show_confirm_dialog("Confirm Safe Uninstall USB", confirm_msg, confirm_text="🗑 Prepare Uninstall USB", is_danger=True):
+            self.log_terminal("Uninstall USB preparation cancelled by user.", "warn")
+            return
+
         self.is_busy = True
         self.current_operation = "uninstall_apps"
         self.start_progress("Preparing Safe Uninstall Apps USB")
@@ -1448,7 +1679,7 @@ class AeroSuiteApp(ctk.CTk):
 
         def _worker():
             ok = payload_engine.prepare_uninstall_apps_usb(
-                self.current_usb.letter, selected, self.allowed_packages,
+                letter, selected, self.allowed_packages,
                 log_func=lambda m: self.log_terminal(m, "cyan"),
                 progress_func=self.update_progress,
                 cancel_check=self.cancel_event.is_set
@@ -1462,9 +1693,20 @@ class AeroSuiteApp(ctk.CTk):
             elif ok:
                 self.log_terminal("Safe Uninstall USB Ready! Plug into car to execute.", "mint")
                 self.finish_progress(True, "Safe Uninstall USB Ready")
+                self.after(0, lambda: self._show_success_dialog(
+                    "Safe Uninstall USB Ready",
+                    f"Safe Uninstall USB is ready on drive {letter}!\n\n"
+                    f"• {len(selected)} application package(s) configured for safe purge.\n\n"
+                    f"Next step: Insert this USB drive into the vehicle USB port to execute safe uninstall."
+                ))
             else:
                 self.log_terminal("Failed to prepare Uninstall USB.", "danger")
                 self.finish_progress(False, "Failed to prepare Uninstall USB")
+                self.after(0, lambda: self._show_error_dialog(
+                    "Safe Uninstall Preparation Failed",
+                    f"Failed to prepare Safe Uninstall USB on drive {letter}.\n\n"
+                    f"Please verify USB drive connection and free disk space."
+                ))
             self.after(0, self._refresh_active_view)
 
         threading.Thread(target=_worker, daemon=True).start()
@@ -1490,6 +1732,15 @@ class AeroSuiteApp(ctk.CTk):
             self.log_terminal("An operation is already in progress. Please wait.", "warn")
             return
 
+        letter = self.current_usb.letter
+        confirm_msg = (
+            f"Are you sure you want to prepare Google Play Services (GMS) USB on drive {letter}?\n\n"
+            f"This will package MicroG Core, Google Play Store, Services Framework, and voice recognizer permissions to inject into your vehicle."
+        )
+        if not self._show_confirm_dialog("Confirm Google Services Installation", confirm_msg, confirm_text="🌐 Prepare GMS USB"):
+            self.log_terminal("GMS Installation preparation cancelled by user.", "warn")
+            return
+
         self.is_busy = True
         self.current_operation = "install_gms"
         self.start_progress("Preparing Google Play Services USB")
@@ -1497,7 +1748,7 @@ class AeroSuiteApp(ctk.CTk):
 
         def _worker():
             ok = payload_engine.prepare_install_gms_usb(
-                self.current_usb.letter, GMS_DIR,
+                letter, GMS_DIR,
                 log_func=lambda m: self.log_terminal(m, "cyan"),
                 progress_func=self.update_progress,
                 cancel_check=self.cancel_event.is_set
@@ -1511,9 +1762,19 @@ class AeroSuiteApp(ctk.CTk):
             elif ok:
                 self.log_terminal("GMS Install USB Ready!", "mint")
                 self.finish_progress(True, "GMS Install USB Ready")
+                self.after(0, lambda: self._show_success_dialog(
+                    "Google Services USB Ready",
+                    f"Google Play Services (GMS) USB has been successfully prepared on drive {letter}!\n\n"
+                    f"Next step: Insert into your vehicle USB port to install Google Services and framework."
+                ))
             else:
                 self.log_terminal("Failed to prepare GMS Install USB.", "danger")
                 self.finish_progress(False, "Failed to prepare GMS Install USB")
+                self.after(0, lambda: self._show_error_dialog(
+                    "GMS Preparation Failed",
+                    f"Failed to prepare Google Services USB on drive {letter}.\n\n"
+                    f"Please verify USB drive connection and free space."
+                ))
             self.after(0, self._refresh_active_view)
 
         threading.Thread(target=_worker, daemon=True).start()
@@ -1539,6 +1800,15 @@ class AeroSuiteApp(ctk.CTk):
             self.log_terminal("An operation is already in progress. Please wait.", "warn")
             return
 
+        letter = self.current_usb.letter
+        confirm_msg = (
+            f"Are you sure you want to prepare Google Services Removal on drive {letter}?\n\n"
+            f"This will prepare a USB payload to completely scrub Google Play Services, MicroG, and account tokens from your vehicle."
+        )
+        if not self._show_confirm_dialog("Confirm Google Services Removal", confirm_msg, confirm_text="🧹 Prepare GMS Removal", is_danger=True):
+            self.log_terminal("GMS Purge preparation cancelled by user.", "warn")
+            return
+
         self.is_busy = True
         self.current_operation = "uninstall_gms"
         self.start_progress("Preparing GMS Clean Purge USB")
@@ -1546,7 +1816,7 @@ class AeroSuiteApp(ctk.CTk):
 
         def _worker():
             ok = payload_engine.prepare_uninstall_gms_usb(
-                self.current_usb.letter,
+                letter,
                 log_func=lambda m: self.log_terminal(m, "cyan"),
                 progress_func=self.update_progress,
                 cancel_check=self.cancel_event.is_set
@@ -1560,9 +1830,18 @@ class AeroSuiteApp(ctk.CTk):
             elif ok:
                 self.log_terminal("GMS Purge USB Ready!", "mint")
                 self.finish_progress(True, "GMS Purge USB Ready")
+                self.after(0, lambda: self._show_success_dialog(
+                    "Google Services Removal Ready",
+                    f"Google Services Purge USB has been successfully prepared on drive {letter}!\n\n"
+                    f"Next step: Insert into your vehicle USB port to purge Google Services."
+                ))
             else:
                 self.log_terminal("Failed to prepare GMS Purge USB.", "danger")
                 self.finish_progress(False, "Failed to prepare GMS Purge USB")
+                self.after(0, lambda: self._show_error_dialog(
+                    "GMS Purge Preparation Failed",
+                    f"Failed to prepare GMS Purge USB on drive {letter}."
+                ))
             self.after(0, self._refresh_active_view)
 
         threading.Thread(target=_worker, daemon=True).start()
@@ -1588,6 +1867,15 @@ class AeroSuiteApp(ctk.CTk):
             self.log_terminal("An operation is already in progress. Please wait.", "warn")
             return
 
+        letter = self.current_usb.letter
+        confirm_msg = (
+            f"Are you sure you want to prepare Open Android Settings USB on drive {letter}?\n\n"
+            f"This creates a fast USB trigger that immediately pops open the hidden stock Android Settings panel on the vehicle screen."
+        )
+        if not self._show_confirm_dialog("Confirm Open Android Settings USB", confirm_msg, confirm_text="⚙️ Prepare Settings USB"):
+            self.log_terminal("Open Settings preparation cancelled by user.", "warn")
+            return
+
         self.is_busy = True
         self.current_operation = "open_settings"
         self.start_progress("Preparing Open Android Settings USB")
@@ -1595,7 +1883,7 @@ class AeroSuiteApp(ctk.CTk):
 
         def _worker():
             ok = payload_engine.prepare_open_settings_usb(
-                self.current_usb.letter,
+                letter,
                 log_func=lambda m: self.log_terminal(m, "cyan"),
                 progress_func=self.update_progress,
                 cancel_check=self.cancel_event.is_set
@@ -1609,9 +1897,18 @@ class AeroSuiteApp(ctk.CTk):
             elif ok:
                 self.log_terminal("Open Settings USB Ready!", "mint")
                 self.finish_progress(True, "Open Settings USB Ready")
+                self.after(0, lambda: self._show_success_dialog(
+                    "Open Android Settings USB Ready",
+                    f"Open Android Settings USB has been successfully prepared on drive {letter}!\n\n"
+                    f"Next step: Plug into your car's USB port to reveal the Android Settings page."
+                ))
             else:
                 self.log_terminal("Failed to prepare Open Settings USB.", "danger")
                 self.finish_progress(False, "Failed to prepare Open Settings USB")
+                self.after(0, lambda: self._show_error_dialog(
+                    "Open Settings Preparation Failed",
+                    f"Failed to prepare Open Android Settings USB on drive {letter}."
+                ))
             self.after(0, self._refresh_active_view)
 
         threading.Thread(target=_worker, daemon=True).start()
@@ -1902,6 +2199,17 @@ class AeroSuiteApp(ctk.CTk):
 
         app_title = selected_app_info["display_name"]
         pkg = selected_app_info["package"]
+        letter = self.current_usb.letter
+
+        confirm_msg = (
+            f"Are you sure you want to prepare Launch USB on drive {letter}?\n\n"
+            f"• Target Application: {app_title}\n"
+            f"• Package Name: {pkg}\n\n"
+            f"When plugged into the vehicle, this payload brings {app_title} to the foreground immediately."
+        )
+        if not self._show_confirm_dialog("Confirm Launch Application USB", confirm_msg, confirm_text="🚀 Prepare Launch USB"):
+            self.log_terminal(f"Launch USB preparation for '{app_title}' cancelled by user.", "warn")
+            return
 
         self.is_busy = True
         self.current_operation = "open_app"
@@ -1910,7 +2218,7 @@ class AeroSuiteApp(ctk.CTk):
 
         def _worker():
             ok = payload_engine.prepare_open_app_usb(
-                self.current_usb.letter,
+                letter,
                 package_name=pkg,
                 app_name=app_title,
                 log_func=lambda m: self.log_terminal(m, "cyan"),
@@ -1926,9 +2234,18 @@ class AeroSuiteApp(ctk.CTk):
             elif ok:
                 self.log_terminal(f"Launch USB Ready for {app_title}! Plug into car to launch.", "mint")
                 self.finish_progress(True, f"Open {app_title} USB Ready")
+                self.after(0, lambda: self._show_success_dialog(
+                    "Launch Application USB Ready",
+                    f"Launch USB for '{app_title}' is ready on drive {letter}!\n\n"
+                    f"Next step: Plug into vehicle USB port to launch {app_title} immediately."
+                ))
             else:
                 self.log_terminal(f"Failed to prepare Launch USB for {app_title}.", "danger")
                 self.finish_progress(False, "Failed to prepare Open App USB")
+                self.after(0, lambda: self._show_error_dialog(
+                    "Launch USB Preparation Failed",
+                    f"Failed to prepare Launch USB for '{app_title}' on drive {letter}."
+                ))
             self.after(0, self._refresh_active_view)
 
         threading.Thread(target=_worker, daemon=True).start()
@@ -1954,6 +2271,16 @@ class AeroSuiteApp(ctk.CTk):
             self.log_terminal("An operation is already in progress. Please wait.", "warn")
             return
 
+        letter = self.current_usb.letter
+        confirm_msg = (
+            f"Are you sure you want to prepare Disable Factory Launcher USB on drive {letter}?\n\n"
+            f"⚠️ WARNING: This will freeze the stock Dongfeng system launcher (com.qinggan.app.launcher).\n"
+            f"Please ensure you already have an alternative launcher (such as AGAMA) installed!"
+        )
+        if not self._show_confirm_dialog("Confirm Disable Factory Launcher", confirm_msg, confirm_text="🚫 Prepare Disable Launcher", is_danger=True):
+            self.log_terminal("Disable Launcher preparation cancelled by user.", "warn")
+            return
+
         self.is_busy = True
         self.current_operation = "disable_launcher"
         self.start_progress("Preparing Disable Launcher USB")
@@ -1961,7 +2288,7 @@ class AeroSuiteApp(ctk.CTk):
 
         def _worker():
             ok = payload_engine.prepare_disable_launcher_usb(
-                self.current_usb.letter,
+                letter,
                 log_func=lambda m: self.log_terminal(m, "cyan"),
                 progress_func=self.update_progress,
                 cancel_check=self.cancel_event.is_set
@@ -1975,9 +2302,18 @@ class AeroSuiteApp(ctk.CTk):
             elif ok:
                 self.log_terminal("Disable Launcher USB Ready! Plug into car to freeze stock launcher.", "mint")
                 self.finish_progress(True, "Disable Launcher USB Ready")
+                self.after(0, lambda: self._show_success_dialog(
+                    "Disable Launcher USB Ready",
+                    f"Disable Factory Launcher USB is ready on drive {letter}!\n\n"
+                    f"Next step: Plug into vehicle USB port to freeze the stock factory launcher."
+                ))
             else:
                 self.log_terminal("Failed to prepare Disable Launcher USB.", "danger")
                 self.finish_progress(False, "Failed to prepare Disable Launcher USB")
+                self.after(0, lambda: self._show_error_dialog(
+                    "Disable Launcher Preparation Failed",
+                    f"Failed to prepare Disable Launcher USB on drive {letter}."
+                ))
             self.after(0, self._refresh_active_view)
 
         threading.Thread(target=_worker, daemon=True).start()
@@ -2003,6 +2339,15 @@ class AeroSuiteApp(ctk.CTk):
             self.log_terminal("An operation is already in progress. Please wait.", "warn")
             return
 
+        letter = self.current_usb.letter
+        confirm_msg = (
+            f"Are you sure you want to prepare Enable Factory Launcher USB on drive {letter}?\n\n"
+            f"This will unfreeze the stock Dongfeng system launcher (com.qinggan.app.launcher) and restore it as default."
+        )
+        if not self._show_confirm_dialog("Confirm Enable Factory Launcher", confirm_msg, confirm_text="✅ Prepare Enable Launcher"):
+            self.log_terminal("Enable Launcher preparation cancelled by user.", "warn")
+            return
+
         self.is_busy = True
         self.current_operation = "enable_launcher"
         self.start_progress("Preparing Enable Launcher USB")
@@ -2010,7 +2355,7 @@ class AeroSuiteApp(ctk.CTk):
 
         def _worker():
             ok = payload_engine.prepare_enable_launcher_usb(
-                self.current_usb.letter,
+                letter,
                 log_func=lambda m: self.log_terminal(m, "cyan"),
                 progress_func=self.update_progress,
                 cancel_check=self.cancel_event.is_set
@@ -2024,9 +2369,18 @@ class AeroSuiteApp(ctk.CTk):
             elif ok:
                 self.log_terminal("Enable Launcher USB Ready! Plug into car to unfreeze stock launcher.", "mint")
                 self.finish_progress(True, "Enable Launcher USB Ready")
+                self.after(0, lambda: self._show_success_dialog(
+                    "Enable Launcher USB Ready",
+                    f"Enable Factory Launcher USB is ready on drive {letter}!\n\n"
+                    f"Next step: Plug into vehicle USB port to unfreeze and restore the stock factory launcher."
+                ))
             else:
                 self.log_terminal("Failed to prepare Enable Launcher USB.", "danger")
                 self.finish_progress(False, "Failed to prepare Enable Launcher USB")
+                self.after(0, lambda: self._show_error_dialog(
+                    "Enable Launcher Preparation Failed",
+                    f"Failed to prepare Enable Launcher USB on drive {letter}."
+                ))
             self.after(0, self._refresh_active_view)
 
         threading.Thread(target=_worker, daemon=True).start()
@@ -2052,6 +2406,15 @@ class AeroSuiteApp(ctk.CTk):
             self.log_terminal("An operation is already in progress. Please wait.", "warn")
             return
 
+        letter = self.current_usb.letter
+        confirm_msg = (
+            f"Are you sure you want to prepare Restart Infotainment Screen USB on drive {letter}?\n\n"
+            f"This creates a fast USB trigger to safely restart the car's Android head unit."
+        )
+        if not self._show_confirm_dialog("Confirm Restart Infotainment Screen", confirm_msg, confirm_text="🔄 Prepare Restart USB"):
+            self.log_terminal("Restart Screen preparation cancelled by user.", "warn")
+            return
+
         self.is_busy = True
         self.current_operation = "reboot_screen"
         self.start_progress("Preparing Restart Infotainment Screen USB")
@@ -2059,7 +2422,7 @@ class AeroSuiteApp(ctk.CTk):
 
         def _worker():
             ok = payload_engine.prepare_reboot_screen_usb(
-                self.current_usb.letter,
+                letter,
                 log_func=lambda m: self.log_terminal(m, "cyan"),
                 progress_func=self.update_progress,
                 cancel_check=self.cancel_event.is_set
@@ -2073,9 +2436,18 @@ class AeroSuiteApp(ctk.CTk):
             elif ok:
                 self.log_terminal("Restart Screen USB Ready! Plug into car to reboot head unit.", "mint")
                 self.finish_progress(True, "Restart Screen USB Ready")
+                self.after(0, lambda: self._show_success_dialog(
+                    "Restart Screen USB Ready",
+                    f"Restart Screen USB has been successfully prepared on drive {letter}!\n\n"
+                    f"Next step: Plug into vehicle USB port to safely reboot the infotainment screen."
+                ))
             else:
                 self.log_terminal("Failed to prepare Restart Screen USB.", "danger")
                 self.finish_progress(False, "Failed to prepare Restart Screen USB")
+                self.after(0, lambda: self._show_error_dialog(
+                    "Restart Screen Preparation Failed",
+                    f"Failed to prepare Restart Screen USB on drive {letter}."
+                ))
             self.after(0, self._refresh_active_view)
 
         threading.Thread(target=_worker, daemon=True).start()
@@ -2339,6 +2711,17 @@ class AeroSuiteApp(ctk.CTk):
         inc_media = self.backup_media_var.get()
         p_name = self.backup_preset_name_var.get().strip()
         p_author = self.backup_author_var.get().strip()
+        letter = self.current_usb.letter
+
+        confirm_msg = (
+            f"Are you sure you want to prepare the Vehicle Backup USB on drive {letter}?\n\n"
+            f"• Backup Mode: {self.backup_mode_var.get()}\n"
+            f"• Include Media: {'Yes (/sdcard, Music, Downloads)' if inc_media else 'No (Fast ~30s ~250MB backup)'}\n\n"
+            f"This will configure the USB to dump vehicle partitions and settings when plugged into your car."
+        )
+        if not self._show_confirm_dialog("Confirm Vehicle Backup USB", confirm_msg, confirm_text="💾 Prepare Backup USB"):
+            self.log_terminal("Backup preparation cancelled by user.", "warn")
+            return
 
         self.is_busy = True
         self.current_operation = "prepare_backup"
@@ -2347,7 +2730,7 @@ class AeroSuiteApp(ctk.CTk):
 
         def _worker():
             ok = payload_engine.prepare_backup_usb(
-                self.current_usb.letter,
+                letter,
                 backup_type=b_type,
                 include_media=inc_media,
                 preset_name=p_name,
@@ -2365,9 +2748,19 @@ class AeroSuiteApp(ctk.CTk):
             elif ok:
                 self.log_terminal(f"Backup USB Ready ({b_type.upper()})! Plug into car to create snapshot.", "mint")
                 self.finish_progress(True, "Backup USB Ready")
+                self.after(0, lambda: self._show_success_dialog(
+                    "Vehicle Backup USB Ready",
+                    f"Vehicle Backup USB ({b_type.upper()}) is ready on drive {letter}!\n\n"
+                    f"Next step: Plug this USB drive into your vehicle's USB port to create the backup snapshot."
+                ))
             else:
                 self.log_terminal("Failed to prepare Backup USB.", "danger")
                 self.finish_progress(False, "Failed to prepare Backup USB")
+                self.after(0, lambda: self._show_error_dialog(
+                    "Backup USB Preparation Failed",
+                    f"Failed to prepare Vehicle Backup USB on drive {letter}.\n\n"
+                    f"Please verify USB drive connection and free disk space."
+                ))
             self.after(0, self._refresh_active_view)
 
         threading.Thread(target=_worker, daemon=True).start()
@@ -2381,20 +2774,29 @@ class AeroSuiteApp(ctk.CTk):
             self.log_terminal("Cannot sync: USB is currently prepared as a Restore Payload for the car, not a new car backup.", "warn")
             return
 
+        letter = self.current_usb.letter
         # Check if already vaulted and confirm with user
-        already_vaulted = find_existing_vault_backup(self.current_usb.letter, BACKUPS_DIR)
+        already_vaulted = find_existing_vault_backup(letter, BACKUPS_DIR)
         force_sync = False
         if already_vaulted:
             folder_bname = os.path.basename(already_vaulted)
-            confirmed = messagebox.askyesno(
+            confirmed = self._show_confirm_dialog(
                 "Backup Already in Vault",
                 f"This exact car backup is ALREADY vaulted on your PC:\n{folder_bname}\n\nDo you want to re-sync anyway?",
-                parent=self
+                confirm_text="Re-sync Anyway"
             )
             if not confirmed:
                 self.log_terminal("Sync skipped (backup is already vaulted in PC).", "cyan")
                 return
             force_sync = True
+        else:
+            confirm_msg = (
+                f"Are you sure you want to sync the car backup from USB drive {letter} to your PC Vault?\n\n"
+                f"Destination:\n{BACKUPS_DIR}"
+            )
+            if not self._show_confirm_dialog("Confirm Sync Backup to PC", confirm_msg, confirm_text="📥 Sync to PC Vault"):
+                self.log_terminal("Backup sync cancelled by user.", "warn")
+                return
 
         # Lock UI immediately on main thread to prevent multiple clicks
         self.is_busy = True
@@ -2404,7 +2806,7 @@ class AeroSuiteApp(ctk.CTk):
 
         def _worker():
             dest = sync_backup_from_usb_to_pc(
-                self.current_usb.letter, BACKUPS_DIR,
+                letter, BACKUPS_DIR,
                 progress_callback=self.update_progress,
                 log_func=lambda m: self.log_terminal(m, "cyan"),
                 force=force_sync,
@@ -2419,9 +2821,19 @@ class AeroSuiteApp(ctk.CTk):
             elif dest:
                 self.log_terminal(f"Backup safely vaulted to PC: {dest}", "mint")
                 self.finish_progress(True, "Backup Safely Vaulted to PC")
+                self.after(0, lambda: self._show_success_dialog(
+                    "Backup Safely Vaulted to PC",
+                    f"Vehicle backup has been safely synced and archived in PC Vault!\n\n"
+                    f"Location:\n{dest}"
+                ))
             else:
                 self.log_terminal("Backup sync failed or aborted.", "danger")
                 self.finish_progress(False, "Backup Sync Failed")
+                self.after(0, lambda: self._show_error_dialog(
+                    "Backup Sync Failed",
+                    f"Failed to sync backup from drive {letter} to PC Vault.\n\n"
+                    f"Please verify that the USB drive contains a valid and complete car backup."
+                ))
             self.after(0, self._refresh_active_view)
         threading.Thread(target=_worker, daemon=True).start()
 
@@ -2512,6 +2924,19 @@ class AeroSuiteApp(ctk.CTk):
             self.log_terminal("Please check the confirmation box before preparing Factory Reset USB.", "danger")
             return
 
+        letter = self.current_usb.letter
+        confirm_msg = (
+            f"Are you sure you want to prepare Zero-Trace Factory Reset USB on drive {letter}?\n\n"
+            f"⚠️ DANGER & COMPLETE PURGE:\n"
+            f"• Wipes all user APKs, accounts, saved Wi-Fi networks, and Bluetooth pairings.\n"
+            f"• Deep Bluetooth NVRAM clear & telemetry wipe (crash tombstones, dropboxes, logs).\n"
+            f"• Re-enables stock launcher and restores vehicle head unit to pristine factory zero.\n\n"
+            f"Do you want to proceed?"
+        )
+        if not self._show_confirm_dialog("Confirm Zero-Trace Factory Reset", confirm_msg, confirm_text="⚠️ Prepare Factory Reset USB", is_danger=True):
+            self.log_terminal("Factory Reset preparation cancelled by user.", "warn")
+            return
+
         self.is_busy = True
         self.current_operation = "factory_reset"
         self.start_progress("Preparing Zero-Trace Factory Reset USB")
@@ -2519,7 +2944,7 @@ class AeroSuiteApp(ctk.CTk):
 
         def _worker():
             ok = payload_engine.prepare_factory_reset_usb(
-                self.current_usb.letter, FACTORY_BACKUP_DIR,
+                letter, FACTORY_BACKUP_DIR,
                 log_func=lambda m: self.log_terminal(m, "cyan"),
                 progress_func=self.update_progress,
                 cancel_check=self.cancel_event.is_set
@@ -2533,9 +2958,19 @@ class AeroSuiteApp(ctk.CTk):
             elif ok:
                 self.log_terminal("Zero-Trace Factory Reset USB Ready!", "mint")
                 self.finish_progress(True, "Zero-Trace Factory Reset USB Ready")
+                self.after(0, lambda: self._show_success_dialog(
+                    "Zero-Trace Factory Reset USB Ready",
+                    f"Zero-Trace Factory Reset USB has been successfully prepared on drive {letter}!\n\n"
+                    f"Next step: Insert into your vehicle USB port. The vehicle will restore stock apps, wipe modifications, reset to factory state, and reboot automatically."
+                ))
             else:
                 self.log_terminal("Failed to prepare Factory Reset USB.", "danger")
                 self.finish_progress(False, "Failed to prepare Factory Reset USB")
+                self.after(0, lambda: self._show_error_dialog(
+                    "Factory Reset Preparation Failed",
+                    f"Failed to prepare Factory Reset USB on drive {letter}.\n\n"
+                    f"Please verify USB drive connection, filesystem format, and free disk space."
+                ))
             self.after(0, self._refresh_active_view)
 
         threading.Thread(target=_worker, daemon=True).start()
@@ -2747,6 +3182,18 @@ class AeroSuiteApp(ctk.CTk):
 
         self.selected_restore_path = bpath
 
+        letter = self.current_usb.letter
+        folder_bname = os.path.basename(bpath)
+        confirm_msg = (
+            f"Are you sure you want to transfer backup '{folder_bname}' to USB drive {letter} and prepare vehicle restore?\n\n"
+            f"• Source Snapshot: {folder_bname}\n"
+            f"• Target Drive: {letter}\n\n"
+            f"This will copy the backup archive and generate the automated 12-step vehicle restore payload."
+        )
+        if not self._show_confirm_dialog("Confirm Vehicle Restore USB", confirm_msg, confirm_text="🔄 Prepare Restore USB"):
+            self.log_terminal(f"Restore preparation for '{folder_bname}' cancelled by user.", "warn")
+            return
+
         # Immediate lock and visual loading state to prevent double-clicks
         self.is_busy = True
         self.current_operation = "restore"
@@ -2755,7 +3202,7 @@ class AeroSuiteApp(ctk.CTk):
 
         def _worker():
             ok = payload_engine.prepare_restore_usb(
-                self.current_usb.letter, bpath,
+                letter, bpath,
                 log_func=lambda m: self.log_terminal(m, "cyan"),
                 progress_func=self.update_progress,
                 cancel_check=self.cancel_event.is_set
@@ -2767,11 +3214,21 @@ class AeroSuiteApp(ctk.CTk):
                 self.log_terminal("Restore preparation cancelled by user.", "warn")
                 self.finish_progress(False, "Restore Cancelled")
             elif ok:
-                self.log_terminal("Restore USB Prepared Successfully! Ready to plug into car.", "mint")
+                self.log_terminal(f"Restore USB Prepared Successfully for '{folder_bname}'! Ready to plug into car.", "mint")
                 self.finish_progress(True, "Restore USB Prepared Successfully")
+                self.after(0, lambda: self._show_success_dialog(
+                    "Restore USB Prepared Successfully",
+                    f"Restore USB payload for '{folder_bname}' is ready on drive {letter}!\n\n"
+                    f"Next step: Insert this USB into your vehicle USB port to begin the automated restoration process."
+                ))
             else:
                 self.log_terminal("Failed to prepare Restore USB.", "danger")
                 self.finish_progress(False, "Failed to prepare Restore USB")
+                self.after(0, lambda: self._show_error_dialog(
+                    "Restore Preparation Failed",
+                    f"Failed to prepare Restore USB on drive {letter}.\n\n"
+                    f"Please verify USB drive connection, available free space, and backup integrity."
+                ))
             self.after(0, self._refresh_active_view)
 
         threading.Thread(target=_worker, daemon=True).start()
@@ -2797,6 +3254,15 @@ class AeroSuiteApp(ctk.CTk):
             return
         if not self._check_usb_ready(): return
 
+        letter = self.current_usb.letter
+        confirm_msg = (
+            f"Are you sure you want to prepare Fetch Diagnostic Logs USB on drive {letter}?\n\n"
+            f"When plugged into your car, this payload will automatically dump Android logcat, dmesg kernel logs, crash tombstones, and system status directly to this USB drive."
+        )
+        if not self._show_confirm_dialog("Confirm Fetch Diagnostic Logs", confirm_msg, confirm_text="📋 Prepare Logs USB"):
+            self.log_terminal("Fetch Diagnostic Logs preparation cancelled by user.", "warn")
+            return
+
         self.is_busy = True
         self.current_operation = "fetch_logs"
         self.start_progress("Preparing Fetch Diagnostic Logs USB")
@@ -2804,7 +3270,7 @@ class AeroSuiteApp(ctk.CTk):
 
         def _worker():
             ok = payload_engine.prepare_fetch_logs_usb(
-                self.current_usb.letter,
+                letter,
                 log_func=lambda m: self.log_terminal(m, "cyan"),
                 progress_func=self.update_progress,
                 cancel_check=self.cancel_event.is_set
@@ -2818,9 +3284,19 @@ class AeroSuiteApp(ctk.CTk):
             elif ok:
                 self.log_terminal("Fetch Logs USB Ready!", "mint")
                 self.finish_progress(True, "Fetch Logs USB Ready")
+                self.after(0, lambda: self._show_success_dialog(
+                    "Fetch Diagnostic Logs USB Ready",
+                    f"Diagnostic Logs USB has been successfully prepared on drive {letter}!\n\n"
+                    f"Next step: Plug into your vehicle USB port. System logs, crash dumps, and diagnostics will be collected automatically."
+                ))
             else:
                 self.log_terminal("Failed to prepare Fetch Logs USB.", "danger")
                 self.finish_progress(False, "Failed to prepare Fetch Logs USB")
+                self.after(0, lambda: self._show_error_dialog(
+                    "Fetch Logs Preparation Failed",
+                    f"Failed to prepare Diagnostic Logs USB on drive {letter}.\n\n"
+                    f"Please verify USB drive connection and free disk space."
+                ))
             self.after(0, self._refresh_active_view)
 
         threading.Thread(target=_worker, daemon=True).start()
@@ -2902,6 +3378,50 @@ class AeroSuiteApp(ctk.CTk):
             self.log_terminal("No USB drive detected! Please insert a USB flash drive.", "danger")
             return False
         return True
+
+    def _show_confirm_dialog(self, title: str, message: str, confirm_text: str = "Proceed", is_danger: bool = False, details: str = "") -> bool:
+        """Displays a themed confirmation modal before executing USB actions."""
+        target_drive = ""
+        if hasattr(self, "current_usb") and self.current_usb:
+            target_drive = f"{self.current_usb.letter} [{self.current_usb.size_gb:.1f} GB, {self.current_usb.fs_type}]"
+        try:
+            dlg = AeroModalDialog(
+                self, title=title, message=message, dialog_type="confirm",
+                confirm_text=confirm_text, is_danger=is_danger,
+                target_drive=target_drive, details=details
+            )
+            self.wait_window(dlg)
+            return dlg.result
+        except Exception:
+            return messagebox.askyesno(title, f"{message}\n\nTarget USB Drive: {target_drive}", parent=self)
+
+    def _show_success_dialog(self, title: str, message: str, details: str = ""):
+        """Displays a themed success modal when a USB payload is ready."""
+        target_drive = ""
+        if hasattr(self, "current_usb") and self.current_usb:
+            target_drive = f"{self.current_usb.letter} [{self.current_usb.size_gb:.1f} GB, {self.current_usb.fs_type}]"
+        try:
+            dlg = AeroModalDialog(
+                self, title=title, message=message, dialog_type="success",
+                target_drive=target_drive, details=details
+            )
+            self.wait_window(dlg)
+        except Exception:
+            messagebox.showinfo(title, message, parent=self)
+
+    def _show_error_dialog(self, title: str, message: str, details: str = ""):
+        """Displays a themed error modal when a USB operation fails."""
+        target_drive = ""
+        if hasattr(self, "current_usb") and self.current_usb:
+            target_drive = f"{self.current_usb.letter} [{self.current_usb.size_gb:.1f} GB, {self.current_usb.fs_type}]"
+        try:
+            dlg = AeroModalDialog(
+                self, title=title, message=message, dialog_type="error",
+                target_drive=target_drive, details=details
+            )
+            self.wait_window(dlg)
+        except Exception:
+            messagebox.showerror(title, message, parent=self)
 
 
 if __name__ == "__main__":
