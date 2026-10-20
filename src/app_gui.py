@@ -61,6 +61,11 @@ class AeroSuiteApp(ctk.CTk):
         self.title(f"Aero Suite v{theme.APP_VERSION} — Dongfeng Shine IVI Studio")
         self.geometry("1200x680")
         self.minsize(1050, 580)
+        try:
+            self.state("zoomed")
+        except Exception:
+            pass
+        self.after(0, lambda: self.state("zoomed"))
         self.configure(fg_color=theme.BG_BASE)
 
         # State
