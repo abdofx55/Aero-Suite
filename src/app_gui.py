@@ -53,204 +53,6 @@ ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("dark-blue")
 
 
-class AeroModalDialog(ctk.CTkToplevel):
-    """
-    A sleek, dark-themed modal dialog matching Aero Suite's automotive design.
-    Supports Confirmation (Yes/No), Success (OK), and Error (OK) dialog modes.
-    """
-    def __init__(
-        self,
-        parent,
-        title: str,
-        message: str,
-        dialog_type: str = "confirm",  # "confirm", "success", "error"
-        confirm_text: str = "Proceed",
-        cancel_text: str = "Cancel",
-        is_danger: bool = False,
-        target_drive: str = "",
-        details: str = ""
-    ):
-        super().__init__(parent)
-        self.result = False
-        self.title(title)
-        self.resizable(False, False)
-        self.configure(fg_color=theme.SURFACE_1)
-
-        # Make modal & transient
-        self.transient(parent)
-        try:
-            self.grab_set()
-        except Exception:
-            pass
-
-        # Accent colors based on type
-        if dialog_type == "success":
-            accent_color = theme.MINT_SUCCESS
-            icon_char = "✓"
-            header_title = title or "Operation Successful"
-        elif dialog_type == "error":
-            accent_color = theme.CRIMSON_DANGER
-            icon_char = "✗"
-            header_title = title or "Operation Failed"
-        else:  # "confirm"
-            accent_color = theme.CRIMSON_DANGER if is_danger else theme.CYAN_PRIMARY
-            icon_char = "⚠️" if is_danger else "⚡"
-            header_title = title or "Confirm Operation"
-
-        # Outer border frame
-        container = ctk.CTkFrame(
-            self,
-            fg_color=theme.SURFACE_1,
-            corner_radius=12,
-            border_width=2,
-            border_color=accent_color
-        )
-        container.pack(fill="both", expand=True, padx=2, pady=2)
-
-        # Header Strip
-        hdr = ctk.CTkFrame(container, fg_color="transparent")
-        hdr.pack(fill="x", padx=20, pady=(16, 8))
-
-        ctk.CTkLabel(
-            hdr,
-            text=icon_char,
-            font=("Space Grotesk", 20, "bold"),
-            text_color=accent_color
-        ).pack(side="left", padx=(0, 10))
-
-        ctk.CTkLabel(
-            hdr,
-            text=header_title,
-            font=("Space Grotesk", 14, "bold"),
-            text_color=theme.TEXT_PRIMARY
-        ).pack(side="left")
-
-        # Target Drive Badge (if specified)
-        if target_drive:
-            drive_bar = ctk.CTkFrame(
-                container,
-                fg_color=theme.SURFACE_2,
-                corner_radius=6,
-                border_width=1,
-                border_color=theme.BORDER_SLATE
-            )
-            drive_bar.pack(fill="x", padx=20, pady=(0, 10))
-            ctk.CTkLabel(
-                drive_bar,
-                text=f"💾 Target USB Drive:  {target_drive}",
-                font=("Consolas", 11, "bold"),
-                text_color=theme.CYAN_PRIMARY
-            ).pack(padx=12, pady=6, anchor="w")
-
-        # Message Content
-        msg_box = ctk.CTkFrame(container, fg_color="transparent")
-        msg_box.pack(fill="both", expand=True, padx=20, pady=(0, 12))
-
-        ctk.CTkLabel(
-            msg_box,
-            text=message,
-            font=("Inter", 12),
-            text_color=theme.TEXT_PRIMARY,
-            justify="left",
-            wraplength=480
-        ).pack(anchor="w")
-
-        if details:
-            det_box = ctk.CTkFrame(container, fg_color=theme.SURFACE_2, corner_radius=6)
-            det_box.pack(fill="x", padx=20, pady=(0, 12))
-            ctk.CTkLabel(
-                det_box,
-                text=details,
-                font=("Consolas", 10),
-                text_color=theme.TEXT_MUTED,
-                justify="left",
-                wraplength=470
-            ).pack(padx=10, pady=6, anchor="w")
-
-        # Bottom Button Bar
-        btn_bar = ctk.CTkFrame(container, fg_color="transparent")
-        btn_bar.pack(fill="x", padx=20, pady=(0, 16))
-
-        if dialog_type == "confirm":
-            btn_cancel = ctk.CTkButton(
-                btn_bar,
-                text=cancel_text,
-                width=110,
-                height=36,
-                font=("Inter", 12, "bold"),
-                fg_color=theme.SURFACE_2,
-                hover_color=theme.SURFACE_3,
-                text_color=theme.TEXT_MUTED,
-                command=self._on_cancel
-            )
-            btn_cancel.pack(side="right", padx=(10, 0))
-
-            btn_confirm = ctk.CTkButton(
-                btn_bar,
-                text=confirm_text,
-                width=170,
-                height=36,
-                font=("Space Grotesk", 12, "bold"),
-                fg_color=accent_color,
-                hover_color=theme.CRIMSON_HOVER if is_danger else theme.CYAN_HOVER,
-                text_color=theme.TEXT_PRIMARY if is_danger else theme.BG_BASE,
-                command=self._on_confirm
-            )
-            btn_confirm.pack(side="right")
-        else:
-            btn_ok = ctk.CTkButton(
-                btn_bar,
-                text="OK",
-                width=120,
-                height=36,
-                font=("Space Grotesk", 12, "bold"),
-                fg_color=accent_color,
-                hover_color=theme.CYAN_HOVER,
-                text_color=theme.BG_BASE if dialog_type == "success" else theme.TEXT_PRIMARY,
-                command=self._on_confirm
-            )
-            btn_ok.pack(side="right")
-
-        self.protocol("WM_DELETE_WINDOW", self._on_cancel)
-        self.bind("<Escape>", lambda e: self._on_cancel())
-        self.bind("<Return>", lambda e: self._on_confirm())
-
-        # Center on parent window
-        self.after(10, self._center_on_parent)
-
-    def _center_on_parent(self):
-        try:
-            self.update_idletasks()
-            pw = self.master.winfo_width()
-            ph = self.master.winfo_height()
-            px = self.master.winfo_x()
-            py = self.master.winfo_y()
-            w = self.winfo_width() or 520
-            h = self.winfo_height() or 240
-            x = px + max(0, (pw - w) // 2)
-            y = py + max(0, (ph - h) // 2)
-            self.geometry(f"+{x}+{y}")
-            self.attributes("-topmost", True)
-            self.focus_set()
-        except Exception:
-            pass
-
-    def _on_confirm(self):
-        self.result = True
-        try:
-            self.grab_release()
-        except Exception:
-            pass
-        self.destroy()
-
-    def _on_cancel(self):
-        self.result = False
-        try:
-            self.grab_release()
-        except Exception:
-            pass
-        self.destroy()
-
 
 class AeroSuiteApp(ctk.CTk):
     def __init__(self):
@@ -1387,10 +1189,8 @@ class AeroSuiteApp(ctk.CTk):
             self.log_terminal("Install Apps USB preparation cancelled by user.", "warn")
             return
 
-        self.is_busy = True
-        self.current_operation = "install_apps"
+        self._set_operation_state(True, "install_apps", "Preparing Install Apps USB")
         self.start_progress("Preparing Install Apps USB")
-        self._refresh_active_view()
 
         def _worker():
             ok = payload_engine.prepare_install_apps_usb(
@@ -1401,8 +1201,7 @@ class AeroSuiteApp(ctk.CTk):
                 cancel_check=self.cancel_event.is_set
             )
             was_cancelled = self.cancel_event.is_set()
-            self.is_busy = False
-            self.current_operation = ""
+            self.after(0, lambda: self._set_operation_state(False))
             if was_cancelled:
                 self.log_terminal("Install Apps preparation cancelled by user.", "warn")
                 self.finish_progress(False, "Install Apps Cancelled")
@@ -1423,7 +1222,6 @@ class AeroSuiteApp(ctk.CTk):
                     f"Failed to prepare Install Applications USB on drive {letter}.\n\n"
                     f"Please check that the USB drive is connected, has write permissions, and has sufficient free disk space."
                 ))
-            self.after(0, self._refresh_active_view)
 
         threading.Thread(target=_worker, daemon=True).start()
 
@@ -1672,10 +1470,8 @@ class AeroSuiteApp(ctk.CTk):
             self.log_terminal("Uninstall USB preparation cancelled by user.", "warn")
             return
 
-        self.is_busy = True
-        self.current_operation = "uninstall_apps"
+        self._set_operation_state(True, "uninstall_apps", "Preparing Safe Uninstall USB")
         self.start_progress("Preparing Safe Uninstall Apps USB")
-        self._refresh_active_view()
 
         def _worker():
             ok = payload_engine.prepare_uninstall_apps_usb(
@@ -1685,8 +1481,7 @@ class AeroSuiteApp(ctk.CTk):
                 cancel_check=self.cancel_event.is_set
             )
             was_cancelled = self.cancel_event.is_set()
-            self.is_busy = False
-            self.current_operation = ""
+            self.after(0, lambda: self._set_operation_state(False))
             if was_cancelled:
                 self.log_terminal("Uninstall preparation cancelled by user.", "warn")
                 self.finish_progress(False, "Uninstall Cancelled")
@@ -1707,7 +1502,6 @@ class AeroSuiteApp(ctk.CTk):
                     f"Failed to prepare Safe Uninstall USB on drive {letter}.\n\n"
                     f"Please verify USB drive connection and free disk space."
                 ))
-            self.after(0, self._refresh_active_view)
 
         threading.Thread(target=_worker, daemon=True).start()
 
@@ -1741,10 +1535,8 @@ class AeroSuiteApp(ctk.CTk):
             self.log_terminal("GMS Installation preparation cancelled by user.", "warn")
             return
 
-        self.is_busy = True
-        self.current_operation = "install_gms"
+        self._set_operation_state(True, "install_gms", "Preparing Google Play Services USB")
         self.start_progress("Preparing Google Play Services USB")
-        self._refresh_active_view()
 
         def _worker():
             ok = payload_engine.prepare_install_gms_usb(
@@ -1754,8 +1546,7 @@ class AeroSuiteApp(ctk.CTk):
                 cancel_check=self.cancel_event.is_set
             )
             was_cancelled = self.cancel_event.is_set()
-            self.is_busy = False
-            self.current_operation = ""
+            self.after(0, lambda: self._set_operation_state(False))
             if was_cancelled:
                 self.log_terminal("GMS Install preparation cancelled by user.", "warn")
                 self.finish_progress(False, "GMS Install Cancelled")
@@ -1775,7 +1566,6 @@ class AeroSuiteApp(ctk.CTk):
                     f"Failed to prepare Google Services USB on drive {letter}.\n\n"
                     f"Please verify USB drive connection and free space."
                 ))
-            self.after(0, self._refresh_active_view)
 
         threading.Thread(target=_worker, daemon=True).start()
 
@@ -1809,10 +1599,8 @@ class AeroSuiteApp(ctk.CTk):
             self.log_terminal("GMS Purge preparation cancelled by user.", "warn")
             return
 
-        self.is_busy = True
-        self.current_operation = "uninstall_gms"
+        self._set_operation_state(True, "uninstall_gms", "Preparing GMS Clean Purge USB")
         self.start_progress("Preparing GMS Clean Purge USB")
-        self._refresh_active_view()
 
         def _worker():
             ok = payload_engine.prepare_uninstall_gms_usb(
@@ -1822,8 +1610,7 @@ class AeroSuiteApp(ctk.CTk):
                 cancel_check=self.cancel_event.is_set
             )
             was_cancelled = self.cancel_event.is_set()
-            self.is_busy = False
-            self.current_operation = ""
+            self.after(0, lambda: self._set_operation_state(False))
             if was_cancelled:
                 self.log_terminal("GMS Purge preparation cancelled by user.", "warn")
                 self.finish_progress(False, "GMS Purge Cancelled")
@@ -1842,7 +1629,6 @@ class AeroSuiteApp(ctk.CTk):
                     "GMS Purge Preparation Failed",
                     f"Failed to prepare GMS Purge USB on drive {letter}."
                 ))
-            self.after(0, self._refresh_active_view)
 
         threading.Thread(target=_worker, daemon=True).start()
 
@@ -1876,10 +1662,8 @@ class AeroSuiteApp(ctk.CTk):
             self.log_terminal("Open Settings preparation cancelled by user.", "warn")
             return
 
-        self.is_busy = True
-        self.current_operation = "open_settings"
+        self._set_operation_state(True, "open_settings", "Preparing Open Android Settings USB")
         self.start_progress("Preparing Open Android Settings USB")
-        self._refresh_active_view()
 
         def _worker():
             ok = payload_engine.prepare_open_settings_usb(
@@ -1889,8 +1673,7 @@ class AeroSuiteApp(ctk.CTk):
                 cancel_check=self.cancel_event.is_set
             )
             was_cancelled = self.cancel_event.is_set()
-            self.is_busy = False
-            self.current_operation = ""
+            self.after(0, lambda: self._set_operation_state(False))
             if was_cancelled:
                 self.log_terminal("Open Settings preparation cancelled by user.", "warn")
                 self.finish_progress(False, "Open Settings Cancelled")
@@ -1909,7 +1692,6 @@ class AeroSuiteApp(ctk.CTk):
                     "Open Settings Preparation Failed",
                     f"Failed to prepare Open Android Settings USB on drive {letter}."
                 ))
-            self.after(0, self._refresh_active_view)
 
         threading.Thread(target=_worker, daemon=True).start()
 
@@ -2211,10 +1993,8 @@ class AeroSuiteApp(ctk.CTk):
             self.log_terminal(f"Launch USB preparation for '{app_title}' cancelled by user.", "warn")
             return
 
-        self.is_busy = True
-        self.current_operation = "open_app"
+        self._set_operation_state(True, "open_app", f"Preparing Launch USB for {app_title}")
         self.start_progress(f"Preparing Launch USB for {app_title}")
-        self._refresh_active_view()
 
         def _worker():
             ok = payload_engine.prepare_open_app_usb(
@@ -2226,8 +2006,7 @@ class AeroSuiteApp(ctk.CTk):
                 cancel_check=self.cancel_event.is_set
             )
             was_cancelled = self.cancel_event.is_set()
-            self.is_busy = False
-            self.current_operation = ""
+            self.after(0, lambda: self._set_operation_state(False))
             if was_cancelled:
                 self.log_terminal(f"Launch USB preparation cancelled for {app_title}.", "warn")
                 self.finish_progress(False, "Open App Cancelled")
@@ -2246,7 +2025,6 @@ class AeroSuiteApp(ctk.CTk):
                     "Launch USB Preparation Failed",
                     f"Failed to prepare Launch USB for '{app_title}' on drive {letter}."
                 ))
-            self.after(0, self._refresh_active_view)
 
         threading.Thread(target=_worker, daemon=True).start()
 
@@ -2281,10 +2059,8 @@ class AeroSuiteApp(ctk.CTk):
             self.log_terminal("Disable Launcher preparation cancelled by user.", "warn")
             return
 
-        self.is_busy = True
-        self.current_operation = "disable_launcher"
+        self._set_operation_state(True, "disable_launcher", "Preparing Disable Launcher USB")
         self.start_progress("Preparing Disable Launcher USB")
-        self._refresh_active_view()
 
         def _worker():
             ok = payload_engine.prepare_disable_launcher_usb(
@@ -2294,8 +2070,7 @@ class AeroSuiteApp(ctk.CTk):
                 cancel_check=self.cancel_event.is_set
             )
             was_cancelled = self.cancel_event.is_set()
-            self.is_busy = False
-            self.current_operation = ""
+            self.after(0, lambda: self._set_operation_state(False))
             if was_cancelled:
                 self.log_terminal("Disable Launcher preparation cancelled by user.", "warn")
                 self.finish_progress(False, "Disable Launcher Cancelled")
@@ -2314,7 +2089,6 @@ class AeroSuiteApp(ctk.CTk):
                     "Disable Launcher Preparation Failed",
                     f"Failed to prepare Disable Launcher USB on drive {letter}."
                 ))
-            self.after(0, self._refresh_active_view)
 
         threading.Thread(target=_worker, daemon=True).start()
 
@@ -2348,10 +2122,8 @@ class AeroSuiteApp(ctk.CTk):
             self.log_terminal("Enable Launcher preparation cancelled by user.", "warn")
             return
 
-        self.is_busy = True
-        self.current_operation = "enable_launcher"
+        self._set_operation_state(True, "enable_launcher", "Preparing Enable Launcher USB")
         self.start_progress("Preparing Enable Launcher USB")
-        self._refresh_active_view()
 
         def _worker():
             ok = payload_engine.prepare_enable_launcher_usb(
@@ -2361,8 +2133,7 @@ class AeroSuiteApp(ctk.CTk):
                 cancel_check=self.cancel_event.is_set
             )
             was_cancelled = self.cancel_event.is_set()
-            self.is_busy = False
-            self.current_operation = ""
+            self.after(0, lambda: self._set_operation_state(False))
             if was_cancelled:
                 self.log_terminal("Enable Launcher preparation cancelled by user.", "warn")
                 self.finish_progress(False, "Enable Launcher Cancelled")
@@ -2381,7 +2152,6 @@ class AeroSuiteApp(ctk.CTk):
                     "Enable Launcher Preparation Failed",
                     f"Failed to prepare Enable Launcher USB on drive {letter}."
                 ))
-            self.after(0, self._refresh_active_view)
 
         threading.Thread(target=_worker, daemon=True).start()
 
@@ -2415,10 +2185,8 @@ class AeroSuiteApp(ctk.CTk):
             self.log_terminal("Restart Screen preparation cancelled by user.", "warn")
             return
 
-        self.is_busy = True
-        self.current_operation = "reboot_screen"
+        self._set_operation_state(True, "reboot_screen", "Preparing Restart Infotainment Screen USB")
         self.start_progress("Preparing Restart Infotainment Screen USB")
-        self._refresh_active_view()
 
         def _worker():
             ok = payload_engine.prepare_reboot_screen_usb(
@@ -2428,8 +2196,7 @@ class AeroSuiteApp(ctk.CTk):
                 cancel_check=self.cancel_event.is_set
             )
             was_cancelled = self.cancel_event.is_set()
-            self.is_busy = False
-            self.current_operation = ""
+            self.after(0, lambda: self._set_operation_state(False))
             if was_cancelled:
                 self.log_terminal("Restart Screen preparation cancelled by user.", "warn")
                 self.finish_progress(False, "Restart Screen Cancelled")
@@ -2448,7 +2215,6 @@ class AeroSuiteApp(ctk.CTk):
                     "Restart Screen Preparation Failed",
                     f"Failed to prepare Restart Screen USB on drive {letter}."
                 ))
-            self.after(0, self._refresh_active_view)
 
         threading.Thread(target=_worker, daemon=True).start()
 
@@ -2723,10 +2489,8 @@ class AeroSuiteApp(ctk.CTk):
             self.log_terminal("Backup preparation cancelled by user.", "warn")
             return
 
-        self.is_busy = True
-        self.current_operation = "prepare_backup"
+        self._set_operation_state(True, "prepare_backup", f"Preparing {b_type.upper()} Backup USB")
         self.start_progress(f"Preparing {b_type.upper()} Backup USB")
-        self._refresh_active_view()
 
         def _worker():
             ok = payload_engine.prepare_backup_usb(
@@ -2740,8 +2504,7 @@ class AeroSuiteApp(ctk.CTk):
                 cancel_check=self.cancel_event.is_set
             )
             was_cancelled = self.cancel_event.is_set()
-            self.is_busy = False
-            self.current_operation = ""
+            self.after(0, lambda: self._set_operation_state(False))
             if was_cancelled:
                 self.log_terminal("Backup preparation cancelled by user.", "warn")
                 self.finish_progress(False, "Backup Preparation Cancelled")
@@ -2761,7 +2524,6 @@ class AeroSuiteApp(ctk.CTk):
                     f"Failed to prepare Vehicle Backup USB on drive {letter}.\n\n"
                     f"Please verify USB drive connection and free disk space."
                 ))
-            self.after(0, self._refresh_active_view)
 
         threading.Thread(target=_worker, daemon=True).start()
 
@@ -2799,10 +2561,8 @@ class AeroSuiteApp(ctk.CTk):
                 return
 
         # Lock UI immediately on main thread to prevent multiple clicks
-        self.is_busy = True
-        self.current_operation = "sync_vault"
+        self._set_operation_state(True, "sync_vault", "Syncing Car Backup to PC Vault")
         self.start_progress("Syncing Car Backup to PC Vault")
-        self._refresh_active_view()
 
         def _worker():
             dest = sync_backup_from_usb_to_pc(
@@ -2813,8 +2573,7 @@ class AeroSuiteApp(ctk.CTk):
                 cancel_check=self.cancel_event.is_set
             )
             was_cancelled = self.cancel_event.is_set()
-            self.is_busy = False
-            self.current_operation = ""
+            self.after(0, lambda: self._set_operation_state(False))
             if was_cancelled:
                 self.log_terminal("Backup sync cancelled by user.", "warn")
                 self.finish_progress(False, "Backup Sync Cancelled")
@@ -2834,7 +2593,6 @@ class AeroSuiteApp(ctk.CTk):
                     f"Failed to sync backup from drive {letter} to PC Vault.\n\n"
                     f"Please verify that the USB drive contains a valid and complete car backup."
                 ))
-            self.after(0, self._refresh_active_view)
         threading.Thread(target=_worker, daemon=True).start()
 
     # -----------------------------------------------------------------------
@@ -2937,10 +2695,8 @@ class AeroSuiteApp(ctk.CTk):
             self.log_terminal("Factory Reset preparation cancelled by user.", "warn")
             return
 
-        self.is_busy = True
-        self.current_operation = "factory_reset"
+        self._set_operation_state(True, "factory_reset", "Preparing Factory Purge USB")
         self.start_progress("Preparing Zero-Trace Factory Reset USB")
-        self._refresh_active_view()
 
         def _worker():
             ok = payload_engine.prepare_factory_reset_usb(
@@ -2950,8 +2706,7 @@ class AeroSuiteApp(ctk.CTk):
                 cancel_check=self.cancel_event.is_set
             )
             was_cancelled = self.cancel_event.is_set()
-            self.is_busy = False
-            self.current_operation = ""
+            self.after(0, lambda: self._set_operation_state(False))
             if was_cancelled:
                 self.log_terminal("Factory Reset preparation cancelled by user.", "warn")
                 self.finish_progress(False, "Factory Reset Cancelled")
@@ -2971,7 +2726,6 @@ class AeroSuiteApp(ctk.CTk):
                     f"Failed to prepare Factory Reset USB on drive {letter}.\n\n"
                     f"Please verify USB drive connection, filesystem format, and free disk space."
                 ))
-            self.after(0, self._refresh_active_view)
 
         threading.Thread(target=_worker, daemon=True).start()
 
@@ -3195,10 +2949,8 @@ class AeroSuiteApp(ctk.CTk):
             return
 
         # Immediate lock and visual loading state to prevent double-clicks
-        self.is_busy = True
-        self.current_operation = "restore"
+        self._set_operation_state(True, "restore", "Transferring Backup to USB")
         self.start_progress("Transferring Backup to USB & Preparing Restore")
-        self._refresh_active_view()
 
         def _worker():
             ok = payload_engine.prepare_restore_usb(
@@ -3208,8 +2960,7 @@ class AeroSuiteApp(ctk.CTk):
                 cancel_check=self.cancel_event.is_set
             )
             was_cancelled = self.cancel_event.is_set()
-            self.is_busy = False
-            self.current_operation = ""
+            self.after(0, lambda: self._set_operation_state(False))
             if was_cancelled:
                 self.log_terminal("Restore preparation cancelled by user.", "warn")
                 self.finish_progress(False, "Restore Cancelled")
@@ -3229,7 +2980,6 @@ class AeroSuiteApp(ctk.CTk):
                     f"Failed to prepare Restore USB on drive {letter}.\n\n"
                     f"Please verify USB drive connection, available free space, and backup integrity."
                 ))
-            self.after(0, self._refresh_active_view)
 
         threading.Thread(target=_worker, daemon=True).start()
 
@@ -3263,10 +3013,8 @@ class AeroSuiteApp(ctk.CTk):
             self.log_terminal("Fetch Diagnostic Logs preparation cancelled by user.", "warn")
             return
 
-        self.is_busy = True
-        self.current_operation = "fetch_logs"
+        self._set_operation_state(True, "fetch_logs", "Preparing Fetch Diagnostic Logs USB")
         self.start_progress("Preparing Fetch Diagnostic Logs USB")
-        self._refresh_active_view()
 
         def _worker():
             ok = payload_engine.prepare_fetch_logs_usb(
@@ -3276,8 +3024,7 @@ class AeroSuiteApp(ctk.CTk):
                 cancel_check=self.cancel_event.is_set
             )
             was_cancelled = self.cancel_event.is_set()
-            self.is_busy = False
-            self.current_operation = ""
+            self.after(0, lambda: self._set_operation_state(False))
             if was_cancelled:
                 self.log_terminal("Fetch Diagnostic Logs cancelled by user.", "warn")
                 self.finish_progress(False, "Fetch Logs Cancelled")
@@ -3297,7 +3044,6 @@ class AeroSuiteApp(ctk.CTk):
                     f"Failed to prepare Diagnostic Logs USB on drive {letter}.\n\n"
                     f"Please verify USB drive connection and free disk space."
                 ))
-            self.after(0, self._refresh_active_view)
 
         threading.Thread(target=_worker, daemon=True).start()
 
@@ -3369,6 +3115,9 @@ class AeroSuiteApp(ctk.CTk):
 
         if op_id:
             setattr(self, f"btn_card_{op_id}", btn)
+            btn._orig_text = btn_text
+            btn._orig_fg = btn_color
+            btn._orig_text_color = theme.BG_BASE if btn_color != theme.CRIMSON_DANGER else theme.TEXT_PRIMARY
 
     def _check_usb_ready(self) -> bool:
         if self.is_busy:
@@ -3378,6 +3127,85 @@ class AeroSuiteApp(ctk.CTk):
             self.log_terminal("No USB drive detected! Please insert a USB flash drive.", "danger")
             return False
         return True
+
+    def _set_operation_state(self, is_busy: bool, op_id: str = "", loading_msg: str = ""):
+        """
+        Lightweight, in-place operation state updater.
+        Toggles button states without destroying, flickering, or re-rendering views!
+        """
+        self.is_busy = is_busy
+        self.current_operation = op_id if is_busy else ""
+
+        # Update specific active view buttons in-place
+        active = getattr(self, "active_feature", "")
+        if active == "install_apps":
+            if hasattr(self, "btn_install_apps") and self.btn_install_apps.winfo_exists():
+                if is_busy:
+                    self.btn_install_apps.configure(
+                        state="disabled",
+                        text=f"⏳ Loading... {loading_msg or 'Processing'}...",
+                        fg_color=theme.SURFACE_3,
+                        text_color=theme.TEXT_MUTED
+                    )
+                else:
+                    self._update_install_button()
+        elif active == "uninstall_apps":
+            if hasattr(self, "btn_uninstall_apps") and self.btn_uninstall_apps.winfo_exists():
+                if is_busy:
+                    self.btn_uninstall_apps.configure(
+                        state="disabled",
+                        text=f"⏳ Loading... {loading_msg or 'Processing'}...",
+                        fg_color=theme.SURFACE_3,
+                        text_color=theme.TEXT_MUTED
+                    )
+                else:
+                    self._update_uninstall_button()
+        elif active == "open_app":
+            if hasattr(self, "btn_open_app_launch") and self.btn_open_app_launch.winfo_exists():
+                if is_busy:
+                    self.btn_open_app_launch.configure(
+                        state="disabled",
+                        text=f"⏳ Loading... {loading_msg or 'Processing'}...",
+                        fg_color=theme.SURFACE_3,
+                        text_color=theme.TEXT_MUTED
+                    )
+                else:
+                    self._update_open_app_launch_button()
+        elif active == "backup":
+            if hasattr(self, "btn_prepare_backup") and self.btn_prepare_backup.winfo_exists():
+                self.btn_prepare_backup.configure(state="disabled" if is_busy else "normal")
+            self._update_backup_sync_button_state()
+        elif active == "factory_reset":
+            if hasattr(self, "btn_factory_reset") and self.btn_factory_reset.winfo_exists():
+                if is_busy:
+                    self.btn_factory_reset.configure(state="disabled", text="⏳ Loading... Preparing Factory Purge USB...", fg_color=theme.SURFACE_3, text_color=theme.TEXT_MUTED)
+                else:
+                    self.btn_factory_reset.configure(state="normal", text="⚠️ PREPARE ZERO-TRACE FACTORY PURGE USB", fg_color=theme.CRIMSON_DANGER, text_color=theme.TEXT_PRIMARY)
+        elif active == "restore":
+            if hasattr(self, "transfer_backup_to_usb_button") and self.transfer_backup_to_usb_button.winfo_exists():
+                if is_busy:
+                    self.transfer_backup_to_usb_button.configure(state="disabled", text="⏳ Loading... Transferring Backup to USB...", fg_color=theme.SURFACE_3, text_color=theme.TEXT_MUTED)
+                else:
+                    self.transfer_backup_to_usb_button.configure(state="normal", text="🔄 TRANSFER TO USB & PREPARE RESTORE", fg_color=theme.CYAN_PRIMARY, text_color=theme.BG_BASE)
+
+        # Card-based action buttons (GMS, Settings, Launchers, Reboot, Logs)
+        check_ids = [op_id] if op_id else ["install_gms", "uninstall_gms", "open_settings", "disable_launcher", "enable_launcher", "reboot_screen", "fetch_logs"]
+        for cid in check_ids:
+            card_btn = getattr(self, f"btn_card_{cid}", None)
+            if card_btn and card_btn.winfo_exists():
+                if is_busy:
+                    card_btn.configure(
+                        state="disabled",
+                        text=f"⏳ Loading... {loading_msg or 'Processing'}...",
+                        fg_color=theme.SURFACE_3,
+                        text_color=theme.TEXT_MUTED
+                    )
+                else:
+                    orig_t = getattr(card_btn, "_orig_text", None)
+                    orig_c = getattr(card_btn, "_orig_fg", theme.CYAN_PRIMARY)
+                    orig_tc = getattr(card_btn, "_orig_text_color", theme.BG_BASE)
+                    if orig_t:
+                        card_btn.configure(state="normal", text=orig_t, fg_color=orig_c, text_color=orig_tc)
 
     def _get_target_drive_str(self) -> str:
         """Safely extracts formatted drive info string for dialog headers."""
@@ -3395,45 +3223,32 @@ class AeroSuiteApp(ctk.CTk):
             return getattr(self.current_usb, "letter", "")
 
     def _show_confirm_dialog(self, title: str, message: str, confirm_text: str = "Proceed", is_danger: bool = False, details: str = "") -> bool:
-        """Displays a themed confirmation modal before executing USB actions."""
+        """Standard native Windows Yes/No confirmation dialog centered on parent window."""
         target_drive = self._get_target_drive_str()
-        try:
-            dlg = AeroModalDialog(
-                self, title=title, message=message, dialog_type="confirm",
-                confirm_text=confirm_text, is_danger=is_danger,
-                target_drive=target_drive, details=details
-            )
-            self.wait_window(dlg)
-            return getattr(dlg, "result", False)
-        except Exception:
-            td_suffix = f"\n\nTarget USB Drive: {target_drive}" if target_drive else ""
-            return messagebox.askyesno(title, f"{message}{td_suffix}", parent=self)
+        td_suffix = f"\n\nTarget USB Drive: {target_drive}" if (target_drive and target_drive not in message) else ""
+        full_msg = f"{message}{td_suffix}"
+        if details:
+            full_msg += f"\n\n{details}"
+        icon = "warning" if is_danger else "question"
+        return messagebox.askyesno(title, full_msg, icon=icon, parent=self)
 
     def _show_success_dialog(self, title: str, message: str, details: str = ""):
-        """Displays a themed success modal when a USB payload is ready."""
+        """Standard native Windows Information dialog centered on parent window."""
         target_drive = self._get_target_drive_str()
-        try:
-            dlg = AeroModalDialog(
-                self, title=title, message=message, dialog_type="success",
-                target_drive=target_drive, details=details
-            )
-            self.wait_window(dlg)
-        except Exception:
-            td_suffix = f"\n\nTarget USB Drive: {target_drive}" if target_drive else ""
-            messagebox.showinfo(title, f"{message}{td_suffix}", parent=self)
+        td_suffix = f"\n\nTarget USB Drive: {target_drive}" if (target_drive and target_drive not in message) else ""
+        full_msg = f"{message}{td_suffix}"
+        if details:
+            full_msg += f"\n\n{details}"
+        messagebox.showinfo(title, full_msg, parent=self)
 
     def _show_error_dialog(self, title: str, message: str, details: str = ""):
-        """Displays a themed error modal when a USB operation fails."""
+        """Standard native Windows Error dialog centered on parent window."""
         target_drive = self._get_target_drive_str()
-        try:
-            dlg = AeroModalDialog(
-                self, title=title, message=message, dialog_type="error",
-                target_drive=target_drive, details=details
-            )
-            self.wait_window(dlg)
-        except Exception:
-            td_suffix = f"\n\nTarget USB Drive: {target_drive}" if target_drive else ""
-            messagebox.showerror(title, f"{message}{td_suffix}", parent=self)
+        td_suffix = f"\n\nTarget USB Drive: {target_drive}" if (target_drive and target_drive not in message) else ""
+        full_msg = f"{message}{td_suffix}"
+        if details:
+            full_msg += f"\n\n{details}"
+        messagebox.showerror(title, full_msg, parent=self)
 
 
 if __name__ == "__main__":
