@@ -30,6 +30,15 @@ class UsbDriveInfo:
         self.author = ""
         self._refresh()
 
+    @property
+    def size_gb(self) -> float:
+        return self.total_gb
+
+    @property
+    def fs_type(self) -> str:
+        return self.fs_name
+
+
     def _refresh(self):
         try:
             # Volume Label and File System

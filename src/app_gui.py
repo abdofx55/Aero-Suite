@@ -3379,11 +3379,24 @@ class AeroSuiteApp(ctk.CTk):
             return False
         return True
 
+    def _get_target_drive_str(self) -> str:
+        """Safely extracts formatted drive info string for dialog headers."""
+        if not getattr(self, "current_usb", None):
+            return ""
+        try:
+            u = self.current_usb
+            letter = getattr(u, "letter", "")
+            size = getattr(u, "total_gb", getattr(u, "size_gb", 0.0))
+            fs = getattr(u, "fs_name", getattr(u, "fs_type", "FAT32"))
+            label = getattr(u, "label", "").strip()
+            label_part = f" ({label})" if label and label != "Removable Disk" else ""
+            return f"{letter}{label_part} [{size:.1f} GB, {fs}]"
+        except Exception:
+            return getattr(self.current_usb, "letter", "")
+
     def _show_confirm_dialog(self, title: str, message: str, confirm_text: str = "Proceed", is_danger: bool = False, details: str = "") -> bool:
         """Displays a themed confirmation modal before executing USB actions."""
-        target_drive = ""
-        if hasattr(self, "current_usb") and self.current_usb:
-            target_drive = f"{self.current_usb.letter} [{self.current_usb.size_gb:.1f} GB, {self.current_usb.fs_type}]"
+        target_drive = self._get_target_drive_str()
         try:
             dlg = AeroModalDialog(
                 self, title=title, message=message, dialog_type="confirm",
@@ -3391,15 +3404,14 @@ class AeroSuiteApp(ctk.CTk):
                 target_drive=target_drive, details=details
             )
             self.wait_window(dlg)
-            return dlg.result
+            return getattr(dlg, "result", False)
         except Exception:
-            return messagebox.askyesno(title, f"{message}\n\nTarget USB Drive: {target_drive}", parent=self)
+            td_suffix = f"\n\nTarget USB Drive: {target_drive}" if target_drive else ""
+            return messagebox.askyesno(title, f"{message}{td_suffix}", parent=self)
 
     def _show_success_dialog(self, title: str, message: str, details: str = ""):
         """Displays a themed success modal when a USB payload is ready."""
-        target_drive = ""
-        if hasattr(self, "current_usb") and self.current_usb:
-            target_drive = f"{self.current_usb.letter} [{self.current_usb.size_gb:.1f} GB, {self.current_usb.fs_type}]"
+        target_drive = self._get_target_drive_str()
         try:
             dlg = AeroModalDialog(
                 self, title=title, message=message, dialog_type="success",
@@ -3407,13 +3419,12 @@ class AeroSuiteApp(ctk.CTk):
             )
             self.wait_window(dlg)
         except Exception:
-            messagebox.showinfo(title, message, parent=self)
+            td_suffix = f"\n\nTarget USB Drive: {target_drive}" if target_drive else ""
+            messagebox.showinfo(title, f"{message}{td_suffix}", parent=self)
 
     def _show_error_dialog(self, title: str, message: str, details: str = ""):
         """Displays a themed error modal when a USB operation fails."""
-        target_drive = ""
-        if hasattr(self, "current_usb") and self.current_usb:
-            target_drive = f"{self.current_usb.letter} [{self.current_usb.size_gb:.1f} GB, {self.current_usb.fs_type}]"
+        target_drive = self._get_target_drive_str()
         try:
             dlg = AeroModalDialog(
                 self, title=title, message=message, dialog_type="error",
@@ -3421,7 +3432,8 @@ class AeroSuiteApp(ctk.CTk):
             )
             self.wait_window(dlg)
         except Exception:
-            messagebox.showerror(title, message, parent=self)
+            td_suffix = f"\n\nTarget USB Drive: {target_drive}" if target_drive else ""
+            messagebox.showerror(title, f"{message}{td_suffix}", parent=self)
 
 
 if __name__ == "__main__":
