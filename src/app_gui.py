@@ -89,7 +89,7 @@ class AeroSuiteApp(ctk.CTk):
         self.install_search_query = ""
         self.uninstall_search_query = ""
         self.open_app_search_query = ""
-        self.selected_open_app_pkg = ""
+        self.selected_open_app_filename = ""
 
         # Global Operation & View State Tracker (Preserved across tab switches)
         self.current_operation = ""
@@ -127,6 +127,19 @@ class AeroSuiteApp(ctk.CTk):
 
     def _rescan_local_apks(self):
         """Re-scans the apks/ directory and updates internal repository lists in-place."""
+        active_btn = None
+        feat = getattr(self, "active_feature", "")
+        if feat == "install_apps" and hasattr(self, "btn_refresh_install") and self.btn_refresh_install.winfo_exists():
+            active_btn = self.btn_refresh_install
+        elif feat == "uninstall_apps" and hasattr(self, "btn_refresh_uninstall") and self.btn_refresh_uninstall.winfo_exists():
+            active_btn = self.btn_refresh_uninstall
+        elif feat == "open_app" and hasattr(self, "btn_refresh_open_app") and self.btn_refresh_open_app.winfo_exists():
+            active_btn = self.btn_refresh_open_app
+
+        if active_btn:
+            active_btn.configure(text="⏳ Scanning...", state="disabled")
+            self.update_idletasks()
+
         self.local_apks = scan_local_apks(APKS_DIR)
         self.allowed_packages = {a["package"] for a in self.local_apks if a["package"]}
         current_filenames = {a["filename"] for a in self.local_apks}
@@ -144,11 +157,30 @@ class AeroSuiteApp(ctk.CTk):
         if self.auto_launch_app_filename and self.auto_launch_app_filename not in current_filenames:
             self.auto_launch_app_filename = None
 
-        if hasattr(self, "selected_open_app_pkg") and self.selected_open_app_pkg not in self.allowed_packages:
-            self.selected_open_app_pkg = ""
+        if hasattr(self, "selected_open_app_filename") and self.selected_open_app_filename not in current_filenames:
+            self.selected_open_app_filename = ""
 
         self.log_terminal(f"🔄 APK Repository refreshed: {len(self.local_apks)} applications found in apks/ folder.", "mint")
-        self._refresh_active_view()
+
+        # In-place refresh of the active view without tearing down content_panel:
+        if feat == "install_apps" and hasattr(self, "install_scroll") and self.install_scroll.winfo_exists():
+            if hasattr(self, "install_count_label") and self.install_count_label.winfo_exists():
+                self.install_count_label.configure(text=f"({len(self.local_apks)} APKs available in repository)")
+            self._render_install_apk_cards()
+        elif feat == "uninstall_apps" and hasattr(self, "uninstall_scroll") and self.uninstall_scroll.winfo_exists():
+            self._render_uninstall_apk_rows()
+        elif feat == "open_app" and hasattr(self, "open_app_scroll") and self.open_app_scroll.winfo_exists():
+            self._render_open_app_rows()
+            self._update_open_app_launch_button()
+        else:
+            self._refresh_active_view()
+
+        if active_btn and active_btn.winfo_exists():
+            active_btn.configure(text="✓ Refreshed!", text_color=theme.MINT_SUCCESS)
+            def _reset_btn():
+                if active_btn.winfo_exists():
+                    active_btn.configure(text="🔄 Refresh", text_color=theme.CYAN_PRIMARY, state="normal")
+            self.after(1200, _reset_btn)
 
     # -----------------------------------------------------------------------
     # Top Header & Status Bar
@@ -791,12 +823,13 @@ class AeroSuiteApp(ctk.CTk):
             text_color=theme.CYAN_PRIMARY
         ).pack(side="left")
 
-        ctk.CTkLabel(
+        self.install_count_label = ctk.CTkLabel(
             title_frame,
             text=f"({len(self.local_apks)} APKs available in repository)",
             font=("Inter", 12),
             text_color=theme.TEXT_MUTED
-        ).pack(side="left", padx=10)
+        )
+        self.install_count_label.pack(side="left", padx=10)
 
         # Controls & Search Strip
         ctrl_frame = ctk.CTkFrame(self.content_panel, fg_color="transparent")
@@ -825,6 +858,7 @@ class AeroSuiteApp(ctk.CTk):
             command=self._rescan_local_apks
         )
         btn_refresh.pack(side="left", padx=(0, 12))
+        self.btn_refresh_install = btn_refresh
 
         # Realtime Search Entry (Contains matching)
         self.install_search_entry = ctk.CTkEntry(
@@ -842,6 +876,7 @@ class AeroSuiteApp(ctk.CTk):
 
         # Action Button Bar & In-View Cancel (Anchored strictly to bottom FIRST so it never gets clipped)
         is_running = (self.current_operation == "install_apps")
+        has_selection = any(self.selected_install_apks.values())
         if is_running:
             d_text = "⏳ Loading... Preparing Install USB..."
             d_fg = theme.SURFACE_3
@@ -852,8 +887,14 @@ class AeroSuiteApp(ctk.CTk):
             d_fg = theme.SURFACE_3
             d_text_color = theme.TEXT_MUTED
             d_state = "disabled"
+        elif not has_selection:
+            d_text = "👆 SELECT AT LEAST ONE APPLICATION TO INSTALL"
+            d_fg = theme.SURFACE_2
+            d_text_color = theme.TEXT_MUTED
+            d_state = "disabled"
         else:
-            d_text = "⚡ PREPARE INSTALL USB"
+            count = sum(1 for v in self.selected_install_apks.values() if v)
+            d_text = f"⚡ PREPARE INSTALL USB ({count} APPLICATION{'S' if count > 1 else ''} SELECTED)"
             d_fg = theme.CYAN_PRIMARY
             d_text_color = theme.BG_BASE
             d_state = "normal"
@@ -867,7 +908,7 @@ class AeroSuiteApp(ctk.CTk):
             height=44,
             font=("Space Grotesk", 14, "bold"),
             fg_color=d_fg,
-            hover_color=d_fg if (is_running or self.is_busy) else theme.CYAN_HOVER,
+            hover_color=d_fg if (is_running or self.is_busy or not has_selection) else theme.CYAN_HOVER,
             text_color=d_text_color,
             state=d_state,
             command=self._execute_prepare_install_usb
@@ -1016,6 +1057,32 @@ class AeroSuiteApp(ctk.CTk):
                 "chk_auto": chk_auto,
             }
 
+        self._update_install_button()
+
+    def _update_install_button(self):
+        if not hasattr(self, "btn_install_apps") or not self.btn_install_apps.winfo_exists():
+            return
+        if self.is_busy or self.current_operation == "install_apps":
+            return
+        has_selection = any(self.selected_install_apks.values())
+        if has_selection:
+            count = sum(1 for v in self.selected_install_apks.values() if v)
+            self.btn_install_apps.configure(
+                text=f"⚡ PREPARE INSTALL USB ({count} APPLICATION{'S' if count > 1 else ''} SELECTED)",
+                fg_color=theme.CYAN_PRIMARY,
+                hover_color=theme.CYAN_HOVER,
+                text_color=theme.BG_BASE,
+                state="normal"
+            )
+        else:
+            self.btn_install_apps.configure(
+                text="👆 SELECT AT LEAST ONE APPLICATION TO INSTALL",
+                fg_color=theme.SURFACE_2,
+                hover_color=theme.SURFACE_2,
+                text_color=theme.TEXT_MUTED,
+                state="disabled"
+            )
+
     def _on_install_chk_toggle(self, fname: str):
         target = self.install_cards_map.get(fname)
         if not target:
@@ -1026,6 +1093,7 @@ class AeroSuiteApp(ctk.CTk):
             self.auto_launch_app_filename = None
             target["auto_var"].set(False)
             target["chk_auto"].configure(font=("Inter", 10, "normal"), text_color=theme.TEXT_PRIMARY)
+        self._update_install_button()
 
     def _on_auto_launch_toggle(self, fname: str):
         target = self.install_cards_map.get(fname)
@@ -1072,6 +1140,7 @@ class AeroSuiteApp(ctk.CTk):
                     if not state:
                         item["auto_var"].set(False)
                         item["chk_auto"].configure(font=("Inter", 10, "normal"), text_color=theme.TEXT_PRIMARY)
+        self._update_install_button()
 
 
     def _execute_prepare_install_usb(self):
@@ -1190,6 +1259,7 @@ class AeroSuiteApp(ctk.CTk):
             command=self._rescan_local_apks
         )
         btn_refresh.pack(side="left", padx=(0, 12))
+        self.btn_refresh_uninstall = btn_refresh
 
         # Realtime Search Entry (Contains matching)
         self.uninstall_search_entry = ctk.CTkEntry(
@@ -1207,19 +1277,30 @@ class AeroSuiteApp(ctk.CTk):
 
         # Action Button Bar & In-View Cancel (Anchored strictly to bottom FIRST so it never gets clipped)
         is_running = (self.current_operation == "uninstall_apps")
+        has_selection = any(self.selected_uninstall_pkgs.values())
         if is_running:
             d_text = "⏳ Loading... Preparing Safe Uninstall USB..."
             d_fg = theme.SURFACE_3
+            d_hover = theme.SURFACE_3
             d_text_color = theme.TEXT_MUTED
             d_state = "disabled"
         elif self.is_busy:
             d_text = f"🔒 System Busy ({self.current_operation_title or 'Operation in progress'})..."
             d_fg = theme.SURFACE_3
+            d_hover = theme.SURFACE_3
+            d_text_color = theme.TEXT_MUTED
+            d_state = "disabled"
+        elif not has_selection:
+            d_text = "👆 SELECT AT LEAST ONE APPLICATION TO UNINSTALL"
+            d_fg = theme.SURFACE_2
+            d_hover = theme.SURFACE_2
             d_text_color = theme.TEXT_MUTED
             d_state = "disabled"
         else:
-            d_text = "🗑 PREPARE SAFE UNINSTALL USB"
+            count = sum(1 for v in self.selected_uninstall_pkgs.values() if v)
+            d_text = f"🗑 PREPARE SAFE UNINSTALL USB ({count} APPLICATION{'S' if count > 1 else ''} SELECTED)"
             d_fg = theme.CRIMSON_DANGER
+            d_hover = theme.CRIMSON_HOVER
             d_text_color = theme.TEXT_PRIMARY
             d_state = "normal"
 
@@ -1232,7 +1313,7 @@ class AeroSuiteApp(ctk.CTk):
             height=44,
             font=("Space Grotesk", 14, "bold"),
             fg_color=d_fg,
-            hover_color=d_fg if (is_running or self.is_busy) else theme.CRIMSON_HOVER,
+            hover_color=d_hover,
             text_color=d_text_color,
             state=d_state,
             command=self._execute_prepare_uninstall_usb
@@ -1254,6 +1335,30 @@ class AeroSuiteApp(ctk.CTk):
         self.uninstall_scroll.pack(side="top", fill="both", expand=True, padx=20, pady=(0, 10))
 
         self._render_uninstall_apk_rows()
+
+    def _update_uninstall_button(self):
+        if not hasattr(self, "btn_uninstall_apps") or not self.btn_uninstall_apps.winfo_exists():
+            return
+        if self.is_busy or self.current_operation == "uninstall_apps":
+            return
+        has_selection = any(self.selected_uninstall_pkgs.values())
+        if has_selection:
+            count = sum(1 for v in self.selected_uninstall_pkgs.values() if v)
+            self.btn_uninstall_apps.configure(
+                text=f"🗑 PREPARE SAFE UNINSTALL USB ({count} APPLICATION{'S' if count > 1 else ''} SELECTED)",
+                fg_color=theme.CRIMSON_DANGER,
+                hover_color=theme.CRIMSON_HOVER,
+                text_color=theme.TEXT_PRIMARY,
+                state="normal"
+            )
+        else:
+            self.btn_uninstall_apps.configure(
+                text="👆 SELECT AT LEAST ONE APPLICATION TO UNINSTALL",
+                fg_color=theme.SURFACE_2,
+                hover_color=theme.SURFACE_2,
+                text_color=theme.TEXT_MUTED,
+                state="disabled"
+            )
 
     def _on_uninstall_search_change(self, event=None):
         self.uninstall_search_query = self.uninstall_search_entry.get()
@@ -1277,6 +1382,7 @@ class AeroSuiteApp(ctk.CTk):
                 text=f"No packages matching '{q}' found.",
                 font=("Inter", 12), text_color=theme.TEXT_MUTED
             ).pack(pady=16)
+            self._update_uninstall_button()
             return
 
         for a in matching_apks:
@@ -1287,6 +1393,7 @@ class AeroSuiteApp(ctk.CTk):
             sel_var = ctk.BooleanVar(value=self.selected_uninstall_pkgs.get(pkg, False))
             def _on_chk(p=pkg, v=sel_var):
                 self.selected_uninstall_pkgs[p] = v.get()
+                self._update_uninstall_button()
 
             chk = ctk.CTkCheckBox(
                 row, text=a["display_name"], variable=sel_var,
@@ -1296,10 +1403,22 @@ class AeroSuiteApp(ctk.CTk):
             )
             chk.pack(side="left", padx=10, pady=6)
 
-            ctk.CTkLabel(
+            pkg_lbl = ctk.CTkLabel(
                 row, text=f"({pkg})",
                 font=("Consolas", 10), text_color=theme.TEXT_MUTED
-            ).pack(side="left", padx=6)
+            )
+            pkg_lbl.pack(side="left", padx=6)
+
+            def _toggle_row(e=None, p=pkg, v=sel_var):
+                new_v = not v.get()
+                v.set(new_v)
+                self.selected_uninstall_pkgs[p] = new_v
+                self._update_uninstall_button()
+
+            row.bind("<Button-1>", _toggle_row)
+            pkg_lbl.bind("<Button-1>", _toggle_row)
+
+        self._update_uninstall_button()
 
     def _toggle_uninstall_all(self, state: bool):
         q = self.uninstall_search_query.strip().lower()
@@ -1309,6 +1428,7 @@ class AeroSuiteApp(ctk.CTk):
             if not q or (q in a["display_name"].lower() or q in a["package"].lower() or q in a["filename"].lower()):
                 self.selected_uninstall_pkgs[pkg] = state
         self._render_uninstall_apk_rows()
+        self._update_uninstall_button()
 
     def _execute_prepare_uninstall_usb(self):
         if not self._check_usb_ready(): return
@@ -1551,15 +1671,17 @@ class AeroSuiteApp(ctk.CTk):
             command=self._rescan_local_apks
         )
         btn_refresh.pack(side="right", padx=(8, 0))
+        self.btn_refresh_open_app = btn_refresh
 
         # Action Button Bar (Anchored strictly to bottom FIRST so it never disappears)
         is_running = (self.current_operation == "open_app")
-        selected_pkg = getattr(self, "selected_open_app_pkg", "")
-        selected_app_info = next((a for a in self.local_apks if a["package"] == selected_pkg), None) if selected_pkg else None
+        selected_fname = getattr(self, "selected_open_app_filename", "")
+        selected_app_info = next((a for a in self.local_apks if a["filename"] == selected_fname), None) if selected_fname else None
         selected_title = selected_app_info["display_name"] if selected_app_info else ""
+        display_title = selected_title if len(selected_title) <= 30 else (selected_title[:27] + "...")
 
         if is_running:
-            d_text = f"⏳ Loading... Preparing Launch USB for {selected_title}..."
+            d_text = f"⏳ Loading... Preparing Launch USB for {display_title}..."
             d_fg = theme.SURFACE_3
             d_hover = theme.SURFACE_3
             d_text_color = theme.TEXT_MUTED
@@ -1570,14 +1692,14 @@ class AeroSuiteApp(ctk.CTk):
             d_hover = theme.SURFACE_3
             d_text_color = theme.TEXT_MUTED
             d_state = "disabled"
-        elif not selected_pkg:
+        elif not selected_fname:
             d_text = "👆 SELECT AN APP FROM THE LIST ABOVE TO PREPARE LAUNCH USB"
             d_fg = theme.SURFACE_2
             d_hover = theme.SURFACE_2
             d_text_color = theme.TEXT_MUTED
             d_state = "disabled"
         else:
-            d_text = f"🚀 PREPARE LAUNCH USB FOR: {selected_title.upper()}"
+            d_text = f"🚀 PREPARE LAUNCH USB FOR: {display_title.upper()}"
             d_fg = theme.CYAN_PRIMARY
             d_hover = theme.CYAN_HOVER
             d_text_color = theme.BG_BASE
@@ -1619,17 +1741,17 @@ class AeroSuiteApp(ctk.CTk):
         self.open_app_search_query = self.open_app_search_entry.get()
         self._render_open_app_rows()
 
-    def _on_open_app_item_clicked(self, clicked_pkg: str):
-        # Strict single-selection toggle:
+    def _on_open_app_item_clicked(self, clicked_filename: str):
+        # Strict single-selection toggle keyed by unique filename:
         # If user clicks the currently selected app, deselect it. Otherwise select it.
-        if self.selected_open_app_pkg == clicked_pkg:
-            self.selected_open_app_pkg = ""
+        if self.selected_open_app_filename == clicked_filename:
+            self.selected_open_app_filename = ""
         else:
-            self.selected_open_app_pkg = clicked_pkg
+            self.selected_open_app_filename = clicked_filename
 
         # Mutate every row item in-place using explicit select() and deselect()
-        for p, item in self.open_app_row_items.items():
-            is_cur = (p == self.selected_open_app_pkg and self.selected_open_app_pkg != "")
+        for fname, item in self.open_app_row_items.items():
+            is_cur = (fname == self.selected_open_app_filename and self.selected_open_app_filename != "")
             if is_cur:
                 item["chk"].select()
                 if hasattr(item["row"], "winfo_exists") and item["row"].winfo_exists():
@@ -1657,11 +1779,12 @@ class AeroSuiteApp(ctk.CTk):
         if self.is_busy or self.current_operation == "open_app":
             return
 
-        if self.selected_open_app_pkg:
-            selected_app_info = next((a for a in self.local_apks if a["package"] == self.selected_open_app_pkg), None)
-            selected_title = selected_app_info["display_name"] if selected_app_info else self.selected_open_app_pkg
+        if self.selected_open_app_filename:
+            selected_app_info = next((a for a in self.local_apks if a["filename"] == self.selected_open_app_filename), None)
+            selected_title = selected_app_info["display_name"] if selected_app_info else self.selected_open_app_filename
+            display_title = selected_title if len(selected_title) <= 30 else (selected_title[:27] + "...")
             self.btn_open_app_launch.configure(
-                text=f"🚀 PREPARE LAUNCH USB FOR: {selected_title.upper()}",
+                text=f"🚀 PREPARE LAUNCH USB FOR: {display_title.upper()}",
                 fg_color=theme.CYAN_PRIMARY,
                 hover_color=theme.CYAN_HOVER,
                 text_color=theme.BG_BASE,
@@ -1695,11 +1818,13 @@ class AeroSuiteApp(ctk.CTk):
                 text=f"No matching applications found.",
                 font=("Inter", 12), text_color=theme.TEXT_MUTED
             ).pack(pady=16)
+            self._update_open_app_launch_button()
             return
 
         for a in matching_apks:
+            fname = a["filename"]
             pkg = a["package"]
-            is_selected = (self.selected_open_app_pkg == pkg and self.selected_open_app_pkg != "")
+            is_selected = (self.selected_open_app_filename == fname and self.selected_open_app_filename != "")
 
             # Compact row matching Safe Uninstall exactly (height=36, corner_radius=8, border_width=1)
             row = ctk.CTkFrame(
@@ -1719,7 +1844,7 @@ class AeroSuiteApp(ctk.CTk):
                 text_color=theme.CYAN_PRIMARY if is_selected else theme.TEXT_PRIMARY,
                 checkmark_color=theme.BG_BASE,
                 fg_color=theme.CYAN_PRIMARY,
-                command=lambda p=pkg: self._on_open_app_item_clicked(p)
+                command=lambda f=fname: self._on_open_app_item_clicked(f)
             )
             chk.pack(side="left", padx=10, pady=6)
             if is_selected:
@@ -1743,35 +1868,40 @@ class AeroSuiteApp(ctk.CTk):
             )
             size_lbl.pack(side="right", padx=10)
 
-            self.open_app_row_items[pkg] = {
+            self.open_app_row_items[fname] = {
                 "row": row,
                 "chk": chk,
                 "size_lbl": size_lbl,
             }
 
             # Allow clicking anywhere on the row to select/toggle this app
-            def _bind_row(r_widget, p=pkg):
+            def _bind_row(r_widget, f=fname):
                 def _click(e):
-                    self._on_open_app_item_clicked(p)
+                    self._on_open_app_item_clicked(f)
                 r_widget.bind("<Button-1>", _click)
 
-            _bind_row(row, pkg)
-            _bind_row(pkg_lbl, pkg)
-            _bind_row(size_lbl, pkg)
+            _bind_row(row, fname)
+            _bind_row(pkg_lbl, fname)
+            _bind_row(size_lbl, fname)
 
+        self._update_open_app_launch_button()
 
     def _execute_prepare_open_app_usb(self):
         if not self._check_usb_ready(): return
-        if not self.selected_open_app_pkg:
+        if not self.selected_open_app_filename:
             self.log_terminal("Please select an application to open.", "warn")
             return
         if self.is_busy:
             self.log_terminal("An operation is already in progress. Please wait.", "warn")
             return
 
-        selected_app_info = next((a for a in self.local_apks if a["package"] == self.selected_open_app_pkg), None)
-        app_title = selected_app_info["display_name"] if selected_app_info else self.selected_open_app_pkg
-        pkg = self.selected_open_app_pkg
+        selected_app_info = next((a for a in self.local_apks if a["filename"] == self.selected_open_app_filename), None)
+        if not selected_app_info:
+            self.log_terminal("Selected application not found in repository.", "warn")
+            return
+
+        app_title = selected_app_info["display_name"]
+        pkg = selected_app_info["package"]
 
         self.is_busy = True
         self.current_operation = "open_app"

@@ -134,9 +134,14 @@ def clean_app_display_name(filename: str) -> str:
     return base
 
 
+# In-memory stat cache to make rescanning instantaneous (sub-millisecond)
+_APK_METADATA_CACHE = {}
+
+
 def scan_local_apks(apks_dir: str) -> list:
     """
     Scans the local apks folder and returns detailed metadata for all valid APKs.
+    Leverages filesystem mtime and file size caching for instantaneous rescanning.
     """
     if not os.path.isdir(apks_dir):
         return []
@@ -145,16 +150,27 @@ def scan_local_apks(apks_dir: str) -> list:
     for fname in sorted(os.listdir(apks_dir)):
         if fname.lower().endswith(".apk"):
             fpath = os.path.join(apks_dir, fname)
-            size_mb = os.path.getsize(fpath) / (1024 * 1024)
-            pkg = get_apk_package_name(fpath)
-            display = clean_app_display_name(fname)
-            results.append({
-                "filename": fname,
-                "path": fpath,
-                "package": pkg or "unknown.package",
-                "display_name": display or fname,
-                "size_mb": round(size_mb, 1),
-            })
+            try:
+                st = os.stat(fpath)
+                cache_key = (fpath, st.st_mtime, st.st_size)
+                if cache_key in _APK_METADATA_CACHE:
+                    results.append(_APK_METADATA_CACHE[cache_key])
+                    continue
+
+                size_mb = st.st_size / (1024 * 1024)
+                pkg = get_apk_package_name(fpath)
+                display = clean_app_display_name(fname)
+                item = {
+                    "filename": fname,
+                    "path": fpath,
+                    "package": pkg or "unknown.package",
+                    "display_name": display or fname,
+                    "size_mb": round(size_mb, 1),
+                }
+                _APK_METADATA_CACHE[cache_key] = item
+                results.append(item)
+            except Exception:
+                continue
     return results
 
 
