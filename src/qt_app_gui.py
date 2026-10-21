@@ -156,6 +156,7 @@ class AeroSuiteQtApp(QMainWindow):
 
         # UI Reference maps for in-place updates without flicker
         self.install_cards_map = {}
+        self.uninstall_cards_map = {}
         self.open_app_row_items = {}
 
         # Apply Stylesheet
@@ -867,6 +868,163 @@ class AeroSuiteQtApp(QMainWindow):
         self._update_install_button()
         return view
 
+    def _set_card_selected_visual(self, card: QFrame, is_selected: bool):
+        if is_selected:
+            card.setStyleSheet(f"QFrame {{ background-color: {theme.CYAN_ALPHA_15}; border: 1px solid {theme.CYAN_PRIMARY}; border-radius: 8px; }}")
+        else:
+            card.setStyleSheet(f"QFrame {{ background-color: {theme.SURFACE_2}; border: 1px solid {theme.BORDER_SLATE}; border-radius: 8px; }} QFrame:hover {{ border: 1px solid {theme.BORDER_CYAN}; }}")
+
+    def _build_unified_app_row(self, mode: str, a: dict) -> QFrame:
+        fname = a["filename"]
+        pkg = a.get("package", "")
+
+        card = QFrame()
+        card.setProperty("class", "card")
+        card.setFixedHeight(40)
+        card.setCursor(Qt.PointingHandCursor)
+
+        # Determine selection state
+        if mode == "install":
+            is_selected = self.selected_install_apks.get(fname, False)
+        elif mode == "uninstall":
+            is_selected = self.selected_uninstall_pkgs.get(pkg, False)
+        elif mode == "open":
+            is_selected = (self.selected_open_app_filename == fname and bool(self.selected_open_app_filename))
+        else:
+            is_selected = False
+
+        self._set_card_selected_visual(card, is_selected)
+
+        c_layout = QHBoxLayout(card)
+        c_layout.setContentsMargins(12, 0, 12, 0)
+        c_layout.setSpacing(10)
+
+        # 1. Main Checkbox (16x16, no text, transparent)
+        chk_main = QCheckBox()
+        chk_main.setCursor(Qt.PointingHandCursor)
+        chk_main.setChecked(is_selected)
+        chk_main.setStyleSheet("background-color: transparent; border: none;")
+        c_layout.addWidget(chk_main)
+
+        # 2. App Name with max characters (26 chars)
+        disp_name = a.get("display_name", fname)
+        max_name_len = 26
+        name_text = disp_name[:max_name_len] + "…" if len(disp_name) > max_name_len else disp_name
+        lbl_name = QLabel(name_text)
+        lbl_name.setStyleSheet(f"font-weight: bold; font-size: 12px; color: {theme.TEXT_PRIMARY}; background-color: transparent; border: none;")
+        lbl_name.setAttribute(Qt.WA_TransparentForMouseEvents, True)
+        c_layout.addWidget(lbl_name)
+
+        # 3. App Package with max characters (30 chars)
+        max_pkg_len = 30
+        pkg_text = f"({pkg[:max_pkg_len]}…)" if len(pkg) > max_pkg_len else f"({pkg})"
+        lbl_pkg = QLabel(pkg_text)
+        lbl_pkg.setStyleSheet(f"font-size: 10px; color: {theme.TEXT_MUTED}; font-family: Consolas, monospace; background-color: transparent; border: none;")
+        lbl_pkg.setAttribute(Qt.WA_TransparentForMouseEvents, True)
+        c_layout.addWidget(lbl_pkg)
+
+        card.setToolTip(f"{disp_name}\n{pkg}\n{a.get('size_mb', 0)} MB")
+
+        # Flexible space pushing right controls to the right
+        c_layout.addStretch()
+
+        # Right side controls:
+        # Visual LTR order: Auto Launch -> Force Portrait -> Block Boot Launch -> Target Dropdown -> App Size
+        # (Reading from right to left: App Size -> Target Dropdown -> Block Boot Launch -> Force Portrait -> Auto Launch)
+        if mode == "install":
+            # Auto Launch checkbox: font size and color act like Force Portrait and Block Boot Launch, never changes when selected
+            chk_auto = QCheckBox("Auto Launch")
+            chk_auto.setCursor(Qt.PointingHandCursor)
+            chk_auto.setChecked(self.auto_launch_app_filename == fname)
+            chk_auto.setStyleSheet(f"font-size: 11px; font-weight: normal; color: {theme.TEXT_PRIMARY}; background-color: transparent; border: none;")
+            chk_auto.stateChanged.connect(lambda state, fn=fname: self._on_auto_launch_toggle(fn, bool(state)))
+            c_layout.addWidget(chk_auto)
+
+            # Force Portrait checkbox
+            chk_port = QCheckBox("Force Portrait")
+            chk_port.setCursor(Qt.PointingHandCursor)
+            chk_port.setStyleSheet(f"font-size: 11px; font-weight: normal; color: {theme.TEXT_PRIMARY}; background-color: transparent; border: none;")
+            chk_port.setChecked(self.per_app_portrait.get(fname, False))
+            chk_port.stateChanged.connect(lambda state, fn=fname: self.per_app_portrait.update({fn: bool(state)}))
+            c_layout.addWidget(chk_port)
+
+            # Block Boot Launch checkbox
+            chk_boot = QCheckBox("Block Boot Launch")
+            chk_boot.setCursor(Qt.PointingHandCursor)
+            chk_boot.setStyleSheet(f"font-size: 11px; font-weight: normal; color: {theme.TEXT_PRIMARY}; background-color: transparent; border: none;")
+            chk_boot.setChecked(self.per_app_boot.get(fname, False))
+            chk_boot.stateChanged.connect(lambda state, fn=fname: self.per_app_boot.update({fn: bool(state)}))
+            c_layout.addWidget(chk_boot)
+
+            # Target Dropdown (User App / System App) - compact height 22px, borderless, transparent
+            combo_target = QComboBox()
+            combo_target.setObjectName("comboTarget")
+            combo_target.setFixedWidth(100)
+            combo_target.setFixedHeight(22)
+            combo_target.setCursor(Qt.PointingHandCursor)
+            combo_target.addItems(["User App", "System App"])
+            combo_target.setToolTip("Target partition: User App (/data/app) vs System App (/system/app)")
+            cur_target = self.per_app_target.get(fname, "user")
+            combo_target.setCurrentIndex(0 if cur_target == "user" else 1)
+            combo_target.currentIndexChanged.connect(lambda idx, fn=fname: self.per_app_target.update({fn: "user" if idx == 0 else "system"}))
+            c_layout.addWidget(combo_target)
+
+        # App Size label (aligned to far right on all 3 modes)
+        lbl_size = QLabel(f"{a.get('size_mb', 0)} MB")
+        lbl_size.setStyleSheet(f"font-size: 10px; font-family: Consolas, monospace; font-weight: bold; color: {theme.TEXT_MUTED}; background-color: transparent; border: none;")
+        lbl_size.setFixedWidth(65)
+        lbl_size.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        lbl_size.setAttribute(Qt.WA_TransparentForMouseEvents, True)
+        c_layout.addWidget(lbl_size)
+
+        # Interaction wiring:
+        if mode == "install":
+            chk_main.clicked.connect(lambda checked, fn=fname: self._on_install_chk_changed(fn, checked))
+            def _card_inst_clicked(event, fn=fname):
+                if event.button() == Qt.LeftButton:
+                    cur = self.selected_install_apks.get(fn, False)
+                    self._on_install_chk_changed(fn, not cur)
+            card.mousePressEvent = _card_inst_clicked
+
+            self.install_cards_map[fname] = {
+                "card": card,
+                "chk_install": chk_main,
+                "chk_auto": chk_auto,
+                "chk_port": chk_port,
+                "chk_boot": chk_boot,
+                "combo_target": combo_target,
+                "lbl_size": lbl_size
+            }
+
+        elif mode == "uninstall":
+            chk_main.clicked.connect(lambda checked, p=pkg: self._on_uninstall_chk_changed(p, checked))
+            def _card_uninst_clicked(event, p=pkg):
+                if event.button() == Qt.LeftButton:
+                    cur = self.selected_uninstall_pkgs.get(p, False)
+                    self._on_uninstall_chk_changed(p, not cur)
+            card.mousePressEvent = _card_uninst_clicked
+
+            self.uninstall_cards_map[pkg] = {
+                "card": card,
+                "chk": chk_main,
+                "lbl_size": lbl_size
+            }
+
+        elif mode == "open":
+            chk_main.clicked.connect(lambda checked, fn=fname: self._on_open_app_item_clicked(fn))
+            def _card_open_clicked(event, fn=fname):
+                if event.button() == Qt.LeftButton:
+                    self._on_open_app_item_clicked(fn)
+            card.mousePressEvent = _card_open_clicked
+
+            self.open_app_row_items[fname] = {
+                "row": card,
+                "chk": chk_main,
+                "lbl_size": lbl_size
+            }
+
+        return card
+
     def _render_install_cards(self):
         while self.install_cards_layout.count():
             item = self.install_cards_layout.takeAt(0)
@@ -889,73 +1047,7 @@ class AeroSuiteQtApp(QMainWindow):
             return
 
         for a in matching:
-            fname = a["filename"]
-            is_cur_selected = self.selected_install_apks.get(fname, False)
-
-            card = QFrame()
-            card.setProperty("class", "card")
-            card.setFixedHeight(40)
-
-            c_layout = QHBoxLayout(card)
-            c_layout.setContentsMargins(12, 4, 12, 4)
-            c_layout.setSpacing(12)
-
-            # 1. Main Checkbox: App Name (Package name removed as requested!)
-            chk_install = QCheckBox(a["display_name"])
-            chk_install.setStyleSheet(f"font-weight: bold; font-size: 12px; color: {theme.CYAN_PRIMARY if is_cur_selected else theme.TEXT_PRIMARY};")
-            chk_install.setChecked(is_cur_selected)
-            chk_install.stateChanged.connect(lambda state, fn=fname: self._on_install_chk_changed(fn, bool(state)))
-            c_layout.addWidget(chk_install)
-
-            # 2. Size Label
-            lbl_size = QLabel(f"{a['size_mb']} MB")
-            lbl_size.setStyleSheet(f"font-size: 10px; font-family: Consolas, monospace; font-weight: bold; color: {theme.TEXT_MUTED};")
-            c_layout.addWidget(lbl_size)
-
-            c_layout.addStretch()
-
-            # 3. Auto Launch Checkbox (First after text as requested!)
-            chk_auto = QCheckBox("Auto Launch")
-            is_auto = (self.auto_launch_app_filename == fname)
-            chk_auto.setChecked(is_auto)
-            chk_auto.setStyleSheet(f"font-size: 11px; font-weight: {'bold' if is_auto else 'normal'}; color: {theme.MINT_SUCCESS if is_auto else theme.TEXT_PRIMARY};")
-            chk_auto.stateChanged.connect(lambda state, fn=fname: self._on_auto_launch_toggle(fn, bool(state)))
-            c_layout.addWidget(chk_auto)
-
-            # 4. Force Portrait Checkbox
-            chk_port = QCheckBox("Force Portrait")
-            chk_port.setStyleSheet(f"font-size: 11px; color: {theme.TEXT_PRIMARY};")
-            chk_port.setChecked(self.per_app_portrait.get(fname, False))
-            chk_port.stateChanged.connect(lambda state, fn=fname: self.per_app_portrait.update({fn: bool(state)}))
-            c_layout.addWidget(chk_port)
-
-            # 5. Block Boot Launch Checkbox
-            chk_boot = QCheckBox("Block Boot Launch")
-            chk_boot.setStyleSheet(f"font-size: 11px; color: {theme.TEXT_PRIMARY};")
-            chk_boot.setChecked(self.per_app_boot.get(fname, False))
-            chk_boot.stateChanged.connect(lambda state, fn=fname: self.per_app_boot.update({fn: bool(state)}))
-            c_layout.addWidget(chk_boot)
-
-            # 6. Target Dropdown: Clear User App / System App selection with down arrow!
-            combo_target = QComboBox()
-            combo_target.setFixedWidth(120)
-            combo_target.setFixedHeight(28)
-            combo_target.setCursor(Qt.PointingHandCursor)
-            combo_target.addItems(["User App", "System App"])
-            combo_target.setToolTip("Target partition: User App (/data/app) vs System App (/system/app)")
-            cur_target = self.per_app_target.get(fname, "user")
-            combo_target.setCurrentIndex(0 if cur_target == "user" else 1)
-            combo_target.currentIndexChanged.connect(lambda idx, fn=fname: self.per_app_target.update({fn: "user" if idx == 0 else "system"}))
-            c_layout.addWidget(combo_target)
-
-            self.install_cards_map[fname] = {
-                "card": card,
-                "chk_install": chk_install,
-                "chk_auto": chk_auto,
-                "chk_port": chk_port,
-                "chk_boot": chk_boot,
-                "combo_target": combo_target,
-            }
+            card = self._build_unified_app_row("install", a)
             self.install_cards_layout.addWidget(card)
 
         self.install_cards_layout.addStretch()
@@ -963,8 +1055,12 @@ class AeroSuiteQtApp(QMainWindow):
     def _on_install_chk_changed(self, fname: str, is_checked: bool):
         self.selected_install_apks[fname] = is_checked
         if fname in self.install_cards_map:
-            chk_i = self.install_cards_map[fname]["chk_install"]
-            chk_i.setStyleSheet(f"font-weight: bold; font-size: 12px; color: {theme.CYAN_PRIMARY if is_checked else theme.TEXT_PRIMARY};")
+            item = self.install_cards_map[fname]
+            chk_i = item["chk_install"]
+            chk_i.blockSignals(True)
+            chk_i.setChecked(is_checked)
+            chk_i.blockSignals(False)
+            self._set_card_selected_visual(item["card"], is_checked)
 
         # If user unselects an app that had auto launch, clear auto launch
         if not is_checked and self.auto_launch_app_filename == fname:
@@ -973,7 +1069,6 @@ class AeroSuiteQtApp(QMainWindow):
                 chk_a = self.install_cards_map[fname]["chk_auto"]
                 chk_a.blockSignals(True)
                 chk_a.setChecked(False)
-                chk_a.setStyleSheet(f"font-size: 11px; font-weight: normal; color: {theme.TEXT_PRIMARY};")
                 chk_a.blockSignals(False)
         self._update_install_button()
 
@@ -981,16 +1076,11 @@ class AeroSuiteQtApp(QMainWindow):
         # UNIFIED BEHAVIOR: Toggling auto-launch does NOT change whether the app is selected for install!
         if is_checked:
             self.auto_launch_app_filename = fname
-            # Update all cards in-place without rebuilding or flicker!
+            # Update all cards in-place without rebuilding or changing font/color!
             for fn, item in self.install_cards_map.items():
                 chk = item["chk_auto"]
                 chk.blockSignals(True)
-                if fn == fname:
-                    chk.setChecked(True)
-                    chk.setStyleSheet(f"font-size: 11px; font-weight: bold; color: {theme.MINT_SUCCESS};")
-                else:
-                    chk.setChecked(False)
-                    chk.setStyleSheet(f"font-size: 11px; font-weight: normal; color: {theme.TEXT_PRIMARY};")
+                chk.setChecked(fn == fname)
                 chk.blockSignals(False)
         else:
             if self.auto_launch_app_filename == fname:
@@ -999,7 +1089,6 @@ class AeroSuiteQtApp(QMainWindow):
                 chk = self.install_cards_map[fname]["chk_auto"]
                 chk.blockSignals(True)
                 chk.setChecked(False)
-                chk.setStyleSheet(f"font-size: 11px; font-weight: normal; color: {theme.TEXT_PRIMARY};")
                 chk.blockSignals(False)
 
     _on_auto_launch_changed = _on_auto_launch_toggle
@@ -1013,15 +1102,16 @@ class AeroSuiteQtApp(QMainWindow):
                 if not state and self.auto_launch_app_filename == fname:
                     self.auto_launch_app_filename = None
                 if fname in self.install_cards_map:
-                    chk_i = self.install_cards_map[fname]["chk_install"]
+                    item = self.install_cards_map[fname]
+                    chk_i = item["chk_install"]
                     chk_i.blockSignals(True)
                     chk_i.setChecked(state)
                     chk_i.blockSignals(False)
+                    self._set_card_selected_visual(item["card"], state)
                     if not state:
-                        chk_a = self.install_cards_map[fname]["chk_auto"]
+                        chk_a = item["chk_auto"]
                         chk_a.blockSignals(True)
                         chk_a.setChecked(False)
-                        chk_a.setStyleSheet(f"font-size: 11px; font-weight: normal; color: {theme.TEXT_PRIMARY};")
                         chk_a.blockSignals(False)
         self._update_install_button()
 
@@ -1035,15 +1125,16 @@ class AeroSuiteQtApp(QMainWindow):
                 if not new_state and self.auto_launch_app_filename == fname:
                     self.auto_launch_app_filename = None
                 if fname in self.install_cards_map:
-                    chk_i = self.install_cards_map[fname]["chk_install"]
+                    item = self.install_cards_map[fname]
+                    chk_i = item["chk_install"]
                     chk_i.blockSignals(True)
                     chk_i.setChecked(new_state)
                     chk_i.blockSignals(False)
+                    self._set_card_selected_visual(item["card"], new_state)
                     if not new_state:
-                        chk_a = self.install_cards_map[fname]["chk_auto"]
+                        chk_a = item["chk_auto"]
                         chk_a.blockSignals(True)
                         chk_a.setChecked(False)
-                        chk_a.setStyleSheet(f"font-size: 11px; font-weight: normal; color: {theme.TEXT_PRIMARY};")
                         chk_a.blockSignals(False)
         self._update_install_button()
 
@@ -1216,6 +1307,7 @@ class AeroSuiteQtApp(QMainWindow):
             if item.widget():
                 item.widget().deleteLater()
 
+        self.uninstall_cards_map = {}
         q = self.uninstall_search_query.strip().lower()
         matching = [
             a for a in self.local_apks
@@ -1223,41 +1315,28 @@ class AeroSuiteQtApp(QMainWindow):
         ]
 
         if not matching:
-            empty_lbl = QLabel("No packages found.")
-            empty_lbl.setStyleSheet(f"color: {theme.TEXT_MUTED}; padding: 20px;")
+            empty_lbl = QLabel("No packages found matching search criteria.")
+            empty_lbl.setStyleSheet(f"color: {theme.TEXT_MUTED}; padding: 20px; font-size: 13px;")
+            empty_lbl.setAlignment(Qt.AlignCenter)
             self.uninstall_cards_layout.addWidget(empty_lbl)
             self.uninstall_cards_layout.addStretch()
             return
 
         for a in matching:
-            pkg = a["package"]
-            row = QFrame()
-            row.setProperty("class", "card")
-            row.setFixedHeight(36)
-            r_layout = QHBoxLayout(row)
-            r_layout.setContentsMargins(10, 4, 10, 4)
-
-            chk = QCheckBox(a["display_name"])
-            chk.setStyleSheet(f"font-weight: bold; font-size: 12px; color: {theme.TEXT_PRIMARY};")
-            chk.setChecked(self.selected_uninstall_pkgs.get(pkg, False))
-            chk.stateChanged.connect(lambda state, p=pkg: self._on_uninstall_chk_changed(p, bool(state)))
-            r_layout.addWidget(chk)
-
-            lbl_pkg = QLabel(f"({pkg})")
-            lbl_pkg.setStyleSheet(f"color: {theme.TEXT_MUTED}; font-size: 10px; font-family: Consolas;")
-            r_layout.addWidget(lbl_pkg)
-            r_layout.addStretch()
-
-            lbl_size = QLabel(f"{a['size_mb']} MB")
-            lbl_size.setStyleSheet(f"color: {theme.TEXT_MUTED}; font-size: 10px; font-family: Consolas; font-weight: bold;")
-            r_layout.addWidget(lbl_size)
-
-            self.uninstall_cards_layout.addWidget(row)
+            card = self._build_unified_app_row("uninstall", a)
+            self.uninstall_cards_layout.addWidget(card)
 
         self.uninstall_cards_layout.addStretch()
 
     def _on_uninstall_chk_changed(self, pkg: str, state: bool):
         self.selected_uninstall_pkgs[pkg] = state
+        if pkg in self.uninstall_cards_map:
+            item = self.uninstall_cards_map[pkg]
+            chk = item["chk"]
+            chk.blockSignals(True)
+            chk.setChecked(state)
+            chk.blockSignals(False)
+            self._set_card_selected_visual(item["card"], state)
         self._update_uninstall_button()
 
     def _set_all_uninstall_pkgs(self, state: bool):
@@ -1267,7 +1346,13 @@ class AeroSuiteQtApp(QMainWindow):
             if not pkg: continue
             if not q or (q in a["display_name"].lower() or q in a["package"].lower() or q in a["filename"].lower()):
                 self.selected_uninstall_pkgs[pkg] = state
-        self._render_uninstall_cards()
+                if pkg in self.uninstall_cards_map:
+                    item = self.uninstall_cards_map[pkg]
+                    chk = item["chk"]
+                    chk.blockSignals(True)
+                    chk.setChecked(state)
+                    chk.blockSignals(False)
+                    self._set_card_selected_visual(item["card"], state)
         self._update_uninstall_button()
 
     def _filter_uninstall_pkgs(self, text: str):
@@ -1391,53 +1476,15 @@ class AeroSuiteQtApp(QMainWindow):
 
         if not matching:
             empty_lbl = QLabel("No matching applications found.")
-            empty_lbl.setStyleSheet(f"color: {theme.TEXT_MUTED}; padding: 20px;")
+            empty_lbl.setStyleSheet(f"color: {theme.TEXT_MUTED}; padding: 20px; font-size: 13px;")
+            empty_lbl.setAlignment(Qt.AlignCenter)
             self.open_app_layout.addWidget(empty_lbl)
             self.open_app_layout.addStretch()
             return
 
         for a in matching:
-            fname = a["filename"]
-            pkg = a["package"]
-            is_selected = (self.selected_open_app_filename == fname and self.selected_open_app_filename != "")
-
-            row = QFrame()
-            row.setProperty("class", "card")
-            row.setFixedHeight(36)
-            row.setCursor(Qt.PointingHandCursor)
-            if is_selected:
-                row.setStyleSheet(f"background-color: {theme.CYAN_ALPHA_15}; border: 1px solid {theme.CYAN_PRIMARY}; border-radius: 8px;")
-            else:
-                row.setStyleSheet(f"background-color: {theme.SURFACE_2}; border: 1px solid {theme.BORDER_SLATE}; border-radius: 8px;")
-
-            r_layout = QHBoxLayout(row)
-            r_layout.setContentsMargins(10, 4, 10, 4)
-
-            chk = QCheckBox(a["display_name"])
-            chk.setStyleSheet(f"font-weight: bold; font-size: 12px; color: {theme.CYAN_PRIMARY if is_selected else theme.TEXT_PRIMARY};")
-            chk.setChecked(is_selected)
-            chk.clicked.connect(lambda checked, fn=fname: self._on_open_app_item_clicked(fn))
-            r_layout.addWidget(chk)
-
-            lbl_pkg = QLabel(f"({pkg})")
-            lbl_pkg.setStyleSheet(f"color: {theme.TEXT_MUTED}; font-size: 10px; font-family: Consolas;")
-            r_layout.addWidget(lbl_pkg)
-            r_layout.addStretch()
-
-            lbl_size = QLabel(f"{a['size_mb']} MB")
-            lbl_size.setStyleSheet(f"color: {theme.CYAN_PRIMARY if is_selected else theme.TEXT_MUTED}; font-size: 10px; font-family: Consolas; font-weight: bold;")
-            r_layout.addWidget(lbl_size)
-
-            def _make_row_click(fn=fname):
-                return lambda event: self._on_open_app_item_clicked(fn)
-            row.mousePressEvent = _make_row_click(fname)
-
-            self.open_app_row_items[fname] = {
-                "row": row,
-                "chk": chk,
-                "lbl_size": lbl_size
-            }
-            self.open_app_layout.addWidget(row)
+            card = self._build_unified_app_row("open", a)
+            self.open_app_layout.addWidget(card)
 
         self.open_app_layout.addStretch()
 
@@ -1447,20 +1494,12 @@ class AeroSuiteQtApp(QMainWindow):
             is_cur = (fn == self.selected_open_app_filename and bool(self.selected_open_app_filename))
             row = item["row"]
             chk = item["chk"]
-            lbl_size = item["lbl_size"]
 
             chk.blockSignals(True)
             chk.setChecked(is_cur)
             chk.blockSignals(False)
 
-            if is_cur:
-                row.setStyleSheet(f"background-color: {theme.CYAN_ALPHA_15}; border: 1px solid {theme.CYAN_PRIMARY}; border-radius: 8px;")
-                chk.setStyleSheet(f"font-weight: bold; font-size: 12px; color: {theme.CYAN_PRIMARY};")
-                lbl_size.setStyleSheet(f"color: {theme.CYAN_PRIMARY}; font-size: 10px; font-family: Consolas; font-weight: bold;")
-            else:
-                row.setStyleSheet(f"background-color: {theme.SURFACE_2}; border: 1px solid {theme.BORDER_SLATE}; border-radius: 8px;")
-                chk.setStyleSheet(f"font-weight: bold; font-size: 12px; color: {theme.TEXT_PRIMARY};")
-                lbl_size.setStyleSheet(f"color: {theme.TEXT_MUTED}; font-size: 10px; font-family: Consolas; font-weight: bold;")
+            self._set_card_selected_visual(row, is_cur)
 
         self._update_open_app_launch_button()
 

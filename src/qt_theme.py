@@ -43,6 +43,12 @@ def get_application_stylesheet() -> str:
     QFrame[class="card"]:hover {{
         border: 1px solid {theme.BORDER_CYAN};
     }}
+    QFrame[class="card"] QLabel,
+    QFrame[class="card"] QCheckBox,
+    QFrame[class="card"] QRadioButton {{
+        background-color: transparent;
+        border: none;
+    }}
 
     /* Category Navigation Headers */
     QLabel[class="navCategory"] {{
@@ -241,6 +247,47 @@ def get_application_stylesheet() -> str:
         border: 1px solid {theme.BORDER_SLATE};
         border-radius: 6px;
         padding: 4px;
+    }}
+
+    /* Compact Borderless Target Partition Dropdown (User App / System App) */
+    QComboBox#comboTarget {{
+        background-color: transparent;
+        color: {theme.TEXT_MUTED};
+        border: none;
+        padding: 0px 18px 0px 2px;
+        font-size: 11px;
+        font-weight: 600;
+        min-height: 20px;
+        max-height: 22px;
+    }}
+    QComboBox#comboTarget:hover {{
+        color: {theme.CYAN_PRIMARY};
+        border: none;
+    }}
+    QComboBox#comboTarget::drop-down {{
+        subcontrol-origin: padding;
+        subcontrol-position: center right;
+        width: 14px;
+        border: none;
+        background: transparent;
+    }}
+    QComboBox#comboTarget::down-arrow {{
+        image: url("assets/arrow_down.png");
+        width: 8px;
+        height: 8px;
+    }}
+    QComboBox#comboTarget::down-arrow:hover {{
+        image: url("assets/arrow_down_cyan.png");
+    }}
+    QComboBox#comboTarget QAbstractItemView {{
+        background-color: {theme.SURFACE_2};
+        color: {theme.TEXT_PRIMARY};
+        selection-background-color: {theme.SURFACE_3};
+        selection-color: {theme.CYAN_PRIMARY};
+        border: 1px solid {theme.BORDER_SLATE};
+        border-radius: 6px;
+        padding: 4px;
+        outline: none;
     }}
 
     QPushButton#btnRefreshUsb {{
