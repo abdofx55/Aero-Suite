@@ -85,11 +85,20 @@ class PayloadWorker(QThread):
             def _cancel_check():
                 return self.cancel_event.is_set()
 
-            self.kwargs["log_func"] = _log
-            self.kwargs["progress_func"] = _progress
-            self.kwargs["cancel_check"] = _cancel_check
+            import inspect
+            sig = inspect.signature(self.target_func)
+            accepted = sig.parameters
+            call_kwargs = dict(self.kwargs)
+            if "log_func" in accepted:
+                call_kwargs["log_func"] = _log
+            if "progress_func" in accepted:
+                call_kwargs["progress_func"] = _progress
+            if "progress_callback" in accepted:
+                call_kwargs["progress_callback"] = lambda pct, cur_f="", spd=0.0, c_mb=0.0, t_mb=0.0: _progress(pct, f"Syncing {cur_f} ({c_mb:.1f}/{t_mb:.1f} MB)" if cur_f else "Syncing...")
+            if "cancel_check" in accepted:
+                call_kwargs["cancel_check"] = _cancel_check
 
-            ok = self.target_func(*self.args, **self.kwargs)
+            ok = self.target_func(*self.args, **call_kwargs)
             self.finished_signal.emit(bool(ok), "")
         except Exception as e:
             self.log_signal.emit(f"Operation Exception: {e}", "danger")
@@ -833,25 +842,30 @@ class AeroSuiteQtApp(QMainWindow):
         if not self.show_confirm_dialog("Confirm Application Installation USB", confirm_msg, confirm_text="⚡ Prepare Install USB"):
             return
 
-        # Build target options
-        apk_files = [os.path.join(APKS_DIR, a["filename"]) for a in selected]
-        portrait_map = {a["filename"]: self.per_app_portrait.get(a["filename"], False) for a in selected}
-        boot_block_map = {a["filename"]: self.per_app_boot.get(a["filename"], False) for a in selected}
-        target_map = {a["filename"]: self.per_app_target.get(a["filename"], "user") for a in selected}
+        selected_payload = []
+        for a in selected:
+            f = a["filename"]
+            selected_payload.append({
+                "filename": f,
+                "path": a["path"],
+                "package": a["package"],
+                "display_name": a["display_name"],
+                "size_mb": a["size_mb"],
+                "force_portrait": self.per_app_portrait.get(f, False),
+                "install_target": self.per_app_target.get(f, "user"),
+                "block_boot": self.per_app_boot.get(f, False)
+            })
 
         auto_launch_pkg = ""
         if self.auto_launch_app_filename:
             target_a = next((a for a in selected if a["filename"] == self.auto_launch_app_filename), None)
-            if target_a:
+            if target_a and target_a.get("package"):
                 auto_launch_pkg = target_a["package"]
 
         self.execute_payload_worker(
-            payload_engine.prepare_install_usb,
+            payload_engine.prepare_install_apps_usb,
             letter,
-            apk_files,
-            per_app_portrait=portrait_map,
-            per_app_boot=boot_block_map,
-            per_app_target=target_map,
+            selected_payload,
             auto_launch_package=auto_launch_pkg,
             success_title="Install Apps USB Ready",
             success_msg=f"Successfully prepared Install Applications USB on drive {letter}!\n\nSafely unplug and insert into vehicle.",
@@ -1009,9 +1023,10 @@ class AeroSuiteQtApp(QMainWindow):
             return
 
         self.execute_payload_worker(
-            payload_engine.prepare_uninstall_usb,
+            payload_engine.prepare_uninstall_apps_usb,
             letter,
             selected,
+            self.allowed_packages,
             success_title="Safe Uninstall USB Ready",
             success_msg=f"Successfully prepared Safe Uninstall USB on drive {letter}!\n\nSafely unplug and insert into vehicle.",
             error_title="Uninstall Preparation Failed"
@@ -1616,6 +1631,7 @@ class AeroSuiteQtApp(QMainWindow):
         self.execute_payload_worker(
             payload_engine.prepare_factory_reset_usb,
             letter,
+            local_factory_backup_dir=FACTORY_BACKUP_DIR,
             success_title="Factory Reset USB Ready",
             success_msg=f"Successfully prepared Factory Reset payload on drive {letter}!",
             error_title="Reset Preparation Failed"
@@ -1689,7 +1705,7 @@ class AeroSuiteQtApp(QMainWindow):
         self.execute_payload_worker(
             payload_engine.prepare_restore_usb,
             letter,
-            backup_source_dir=backup_path,
+            local_backup_folder=backup_path,
             success_title="Restore USB Ready",
             success_msg=f"Successfully prepared Restore USB on drive {letter}!",
             error_title="Restore Preparation Failed"

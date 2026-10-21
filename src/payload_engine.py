@@ -207,7 +207,7 @@ def prepare_install_apps_usb(usb_drive: str, selected_apks: list, options: dict 
                 progress_func(idx / total_apks, fname, 0.0, idx, total_apks)
 
         # Generate custom_rep.sh for both System Apps and User Apps
-        script = """#!/system/bin/sh
+        script = f"""#!/system/bin/sh
 # ==========================================
 # AERO SUITE — AUTOMATED APP INSTALLER
 # ==========================================
