@@ -337,7 +337,13 @@ class AeroSuiteQtApp(QMainWindow):
         ]
 
         self.feature_buttons = {}
-        for cat_title, cat_feats in self.feature_categories:
+        for i, (cat_title, cat_feats) in enumerate(self.feature_categories):
+            if i > 0:
+                sep = QFrame()
+                sep.setFrameShape(QFrame.HLine)
+                sep.setFixedHeight(1)
+                sep.setStyleSheet(f"background-color: {theme.BORDER_SLATE}; border: none; margin: 4px 8px;")
+                self.nav_layout.addWidget(sep)
             lbl_cat = QLabel(cat_title)
             lbl_cat.setProperty("class", "navCategory")
             self.nav_layout.addWidget(lbl_cat)
@@ -436,10 +442,16 @@ class AeroSuiteQtApp(QMainWindow):
         prog_bar.addWidget(self.progress_bar)
         bottom_layout.addLayout(prog_bar)
 
+        term_sep = QFrame()
+        term_sep.setFrameShape(QFrame.HLine)
+        term_sep.setFixedHeight(1)
+        term_sep.setStyleSheet(f"background-color: {theme.BORDER_SLATE}; border: none;")
+        bottom_layout.addWidget(term_sep)
+
         # Terminal Console Strip
         term_header = QHBoxLayout()
         lbl_console = QLabel("💻 TERMINAL & SYSTEM LOGS")
-        lbl_console.setStyleSheet(f"font-size: 11px; font-weight: bold; color: {theme.TEXT_MUTED};")
+        lbl_console.setStyleSheet(f"font-size: 10px; font-weight: bold; color: {theme.TEXT_MUTED}; letter-spacing: 0.5px;")
         term_header.addWidget(lbl_console)
         term_header.addStretch()
 
@@ -514,6 +526,7 @@ class AeroSuiteQtApp(QMainWindow):
                     QFrame#{obj_name} {{
                         background-color: {theme.CYAN_ALPHA_15};
                         border: 1px solid {theme.CYAN_PRIMARY};
+                        border-left: 3px solid {theme.CYAN_PRIMARY};
                         border-radius: 8px;
                     }}
                     QLabel {{
@@ -918,7 +931,11 @@ class AeroSuiteQtApp(QMainWindow):
         title_box.addWidget(lbl_vtitle)
 
         self.install_count_label = QLabel(f"({len(self.local_apks)} APKs available in repository)")
-        self.install_count_label.setStyleSheet(f"font-size: 12px; color: {theme.TEXT_MUTED};")
+        self.install_count_label.setStyleSheet(
+            f"font-size: 11px; color: {theme.CYAN_PRIMARY}; "
+            f"background-color: {theme.CYAN_ALPHA_15}; border: 1px solid {theme.BORDER_CYAN}; "
+            f"border-radius: 10px; padding: 1px 8px;"
+        )
         title_box.addWidget(self.install_count_label)
         title_box.addStretch()
         layout.addLayout(title_box)
@@ -1437,6 +1454,10 @@ class AeroSuiteQtApp(QMainWindow):
         btn_none.clicked.connect(lambda: self._set_all_uninstall_pkgs(False))
         ctrl_bar.addWidget(btn_none)
 
+        btn_invert = QPushButton("Invert")
+        btn_invert.clicked.connect(self._invert_uninstall_selection)
+        ctrl_bar.addWidget(btn_invert)
+
         btn_refresh = QPushButton("🔄 Refresh")
         btn_refresh.clicked.connect(self._rescan_apks)
         ctrl_bar.addWidget(btn_refresh)
@@ -1522,6 +1543,23 @@ class AeroSuiteQtApp(QMainWindow):
                     chk.setChecked(state)
                     chk.blockSignals(False)
                     self._set_card_selected_visual(item["card"], state)
+        self._update_uninstall_button()
+
+    def _invert_uninstall_selection(self):
+        q = self.uninstall_search_query.strip().lower()
+        for a in self.local_apks:
+            pkg = a.get("package", "")
+            if not pkg: continue
+            if not q or (q in a["display_name"].lower() or q in a["package"].lower() or q in a["filename"].lower()):
+                cur = self.selected_uninstall_pkgs.get(pkg, False)
+                self.selected_uninstall_pkgs[pkg] = not cur
+                if pkg in self.uninstall_cards_map:
+                    item = self.uninstall_cards_map[pkg]
+                    chk = item["chk"]
+                    chk.blockSignals(True)
+                    chk.setChecked(not cur)
+                    chk.blockSignals(False)
+                    self._set_card_selected_visual(item["card"], not cur)
         self._update_uninstall_button()
 
     def _filter_uninstall_pkgs(self, text: str):

@@ -25,7 +25,7 @@ def get_application_stylesheet() -> str:
     /* Top Bar Panel */
     #topBarPanel {{
         background-color: {theme.SURFACE_1};
-        border-bottom: 1px solid {theme.BORDER_SLATE};
+        border-bottom: 1px solid {theme.CYAN_DIM};
     }}
 
     /* Bottom Console & Status Panel */
@@ -111,6 +111,7 @@ def get_application_stylesheet() -> str:
         font-size: 12px;
         font-weight: 600;
         outline: none;
+        min-height: 28px;
     }}
     QPushButton:hover {{
         background-color: {theme.SURFACE_3};
@@ -229,7 +230,7 @@ def get_application_stylesheet() -> str:
         border-radius: 6px;
         padding: 4px 24px 4px 10px;
         font-size: 11px;
-        font-weight: 600;
+        font-weight: 500;
         min-height: 26px;
     }}
     QComboBox:hover {{
@@ -491,7 +492,7 @@ def get_application_stylesheet() -> str:
         border-radius: 4px;
     }}
     QScrollBar::handle:vertical {{
-        background-color: {theme.SURFACE_3};
+        background-color: {theme.BORDER_SLATE};
         min-height: 24px;
         border-radius: 4px;
     }}
@@ -548,7 +549,7 @@ def get_application_stylesheet() -> str:
         color: transparent;
     }}
     QProgressBar::chunk {{
-        background-color: {theme.CYAN_PRIMARY};
+        background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #0099BB, stop:0.6 #00D2FF, stop:1 #33DCFF);
         border-radius: 3px;
     }}
 
