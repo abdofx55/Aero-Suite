@@ -1788,7 +1788,8 @@ class AeroSuiteQtApp(QMainWindow):
         card = QFrame()
         card.setProperty("class", "card")
         c_layout = QVBoxLayout(card)
-        c_layout.setSpacing(10)
+        c_layout.setContentsMargins(18, 16, 18, 16)
+        c_layout.setSpacing(14)
 
         lbl_head = QLabel("⚙️ OPEN NATIVE ANDROID SETTINGS")
         lbl_head.setStyleSheet(f"font-size: 15px; font-weight: bold; color: {theme.CYAN_PRIMARY};")
@@ -1847,7 +1848,8 @@ class AeroSuiteQtApp(QMainWindow):
         card = QFrame()
         card.setProperty("class", "card")
         c_layout = QVBoxLayout(card)
-        c_layout.setSpacing(10)
+        c_layout.setContentsMargins(18, 16, 18, 16)
+        c_layout.setSpacing(14)
 
         lbl_head = QLabel("🌐 GOOGLE PLAY SERVICES SETUP")
         lbl_head.setStyleSheet(f"font-size: 15px; font-weight: bold; color: {theme.CYAN_PRIMARY}; border: none; background: transparent;")
@@ -1907,7 +1909,8 @@ class AeroSuiteQtApp(QMainWindow):
         card = QFrame()
         card.setProperty("class", "card")
         c_layout = QVBoxLayout(card)
-        c_layout.setSpacing(10)
+        c_layout.setContentsMargins(18, 16, 18, 16)
+        c_layout.setSpacing(14)
 
         lbl_head = QLabel("🧹 REMOVE GOOGLE PLAY SERVICES")
         lbl_head.setStyleSheet(f"font-size: 15px; font-weight: bold; color: {theme.CRIMSON_DANGER}; border: none; background: transparent;")
@@ -1965,7 +1968,8 @@ class AeroSuiteQtApp(QMainWindow):
         card = QFrame()
         card.setProperty("class", "card")
         c_layout = QVBoxLayout(card)
-        c_layout.setSpacing(10)
+        c_layout.setContentsMargins(18, 16, 18, 16)
+        c_layout.setSpacing(14)
 
         lbl_head = QLabel("🚫 DISABLE FACTORY LAUNCHER")
         lbl_head.setStyleSheet(f"font-size: 15px; font-weight: bold; color: {theme.CRIMSON_DANGER};")
@@ -2024,7 +2028,8 @@ class AeroSuiteQtApp(QMainWindow):
         card = QFrame()
         card.setProperty("class", "card")
         c_layout = QVBoxLayout(card)
-        c_layout.setSpacing(10)
+        c_layout.setContentsMargins(18, 16, 18, 16)
+        c_layout.setSpacing(14)
 
         lbl_head = QLabel("✅ ENABLE FACTORY LAUNCHER")
         lbl_head.setStyleSheet(f"font-size: 15px; font-weight: bold; color: {theme.CYAN_PRIMARY}; border: none; background: transparent;")
@@ -2076,7 +2081,8 @@ class AeroSuiteQtApp(QMainWindow):
         card = QFrame()
         card.setProperty("class", "card")
         c_layout = QVBoxLayout(card)
-        c_layout.setSpacing(10)
+        c_layout.setContentsMargins(18, 16, 18, 16)
+        c_layout.setSpacing(14)
 
         lbl_head = QLabel("🔄 RESTART INFOTAINMENT SCREEN")
         lbl_head.setStyleSheet(f"font-size: 15px; font-weight: bold; color: {theme.CYAN_PRIMARY}; border: none; background: transparent;")
@@ -2129,7 +2135,8 @@ class AeroSuiteQtApp(QMainWindow):
         card_prep = QFrame()
         card_prep.setProperty("class", "card")
         cp_layout = QVBoxLayout(card_prep)
-        cp_layout.setSpacing(8)
+        cp_layout.setContentsMargins(18, 16, 18, 16)
+        cp_layout.setSpacing(12)
 
         lbl_head1 = QLabel("💾 SYSTEM & DATA BACKUP")
         lbl_head1.setStyleSheet(f"font-size: 15px; font-weight: bold; color: {theme.CYAN_PRIMARY};")
@@ -2157,7 +2164,8 @@ class AeroSuiteQtApp(QMainWindow):
         card_sync = QFrame()
         card_sync.setProperty("class", "card")
         cs_layout = QVBoxLayout(card_sync)
-        cs_layout.setSpacing(8)
+        cs_layout.setContentsMargins(18, 16, 18, 16)
+        cs_layout.setSpacing(12)
 
         lbl_head2 = QLabel("📥 SYNC USB BACKUP TO PC VAULT")
         lbl_head2.setStyleSheet(f"font-size: 15px; font-weight: bold; color: {theme.MINT_SUCCESS};")
@@ -2251,7 +2259,8 @@ class AeroSuiteQtApp(QMainWindow):
         card = QFrame()
         card.setProperty("class", "card")
         c_layout = QVBoxLayout(card)
-        c_layout.setSpacing(10)
+        c_layout.setContentsMargins(18, 16, 18, 16)
+        c_layout.setSpacing(14)
 
         lbl_head = QLabel("📥 RESTORE VEHICLE FROM BACKUP")
         lbl_head.setStyleSheet(f"font-size: 15px; font-weight: bold; color: {theme.CYAN_PRIMARY}; border: none; background: transparent;")
@@ -2344,7 +2353,8 @@ class AeroSuiteQtApp(QMainWindow):
         card = QFrame()
         card.setProperty("class", "card")
         c_layout = QVBoxLayout(card)
-        c_layout.setSpacing(10)
+        c_layout.setContentsMargins(18, 16, 18, 16)
+        c_layout.setSpacing(14)
 
         lbl_head = QLabel("⚠️ ZERO-TRACE FACTORY RESET")
         lbl_head.setStyleSheet(f"font-size: 15px; font-weight: bold; color: {theme.CRIMSON_DANGER}; border: none; background: transparent;")
@@ -2405,7 +2415,8 @@ class AeroSuiteQtApp(QMainWindow):
         card = QFrame()
         card.setProperty("class", "card")
         c_layout = QVBoxLayout(card)
-        c_layout.setSpacing(10)
+        c_layout.setContentsMargins(18, 16, 18, 16)
+        c_layout.setSpacing(14)
 
         lbl_head = QLabel("📋 FETCH DIAGNOSTIC LOGS")
         lbl_head.setStyleSheet(f"font-size: 15px; font-weight: bold; color: {theme.CYAN_PRIMARY}; border: none; background: transparent;")
