@@ -295,10 +295,12 @@ def get_application_stylesheet() -> str:
         color: {theme.CYAN_PRIMARY};
         border: 1px solid {theme.BORDER_SLATE};
         border-radius: 8px;
-        padding: 4px 14px;
+        padding: 4px 8px;
         font-size: 11px;
         font-weight: bold;
         min-height: 32px;
+        min-width: 115px;
+        max-width: 115px;
     }}
     QPushButton#btnRefreshUsb:hover {{
         background-color: {theme.SURFACE_3};
@@ -407,9 +409,10 @@ def get_application_stylesheet() -> str:
         border: none;
         font-size: 11px;
         font-weight: bold;
-        padding: 4px 12px;
-        border-radius: 6px;
-        min-height: 24px;
+        padding: 0px 10px;
+        border-radius: 4px;
+        min-height: 22px;
+        max-height: 22px;
     }}
     QPushButton#btnCancelOp:hover {{
         background-color: {theme.CRIMSON_HOVER};
@@ -480,7 +483,9 @@ def get_application_stylesheet() -> str:
         background-color: {theme.SURFACE_2};
         border: 1px solid {theme.BORDER_SLATE};
         border-radius: 4px;
-        height: 8px;
+        min-height: 20px;
+        max-height: 22px;
+        height: 22px;
         text-align: center;
         color: transparent;
     }}

@@ -241,6 +241,7 @@ class AeroSuiteQtApp(QMainWindow):
         self.btn_refresh_usb = QPushButton("🔄 Refresh")
         self.btn_refresh_usb.setObjectName("btnRefreshUsb")
         self.btn_refresh_usb.setFixedHeight(34)
+        self.btn_refresh_usb.setFixedWidth(115)
         self.btn_refresh_usb.setCursor(Qt.PointingHandCursor)
         self.btn_refresh_usb.setToolTip("Refresh & Rescan USB Flash Drives")
         self.btn_refresh_usb.clicked.connect(self._refresh_usb_drives)
@@ -415,14 +416,14 @@ class AeroSuiteQtApp(QMainWindow):
         self.btn_cancel_op = QPushButton("⏹ CANCEL")
         self.btn_cancel_op.setObjectName("btnCancelOp")
         self.btn_cancel_op.setCursor(Qt.PointingHandCursor)
-        self.btn_cancel_op.setFixedHeight(28)
+        self.btn_cancel_op.setFixedHeight(22)
         self.btn_cancel_op.setVisible(False)
         self.btn_cancel_op.clicked.connect(self.cancel_current_operation)
         prog_bar.addWidget(self.btn_cancel_op)
 
         self.progress_bar = QProgressBar()
         self.progress_bar.setFixedWidth(260)
-        self.progress_bar.setFixedHeight(20)
+        self.progress_bar.setFixedHeight(22)
         self.progress_bar.setValue(0)
         prog_bar.addWidget(self.progress_bar)
         bottom_layout.addLayout(prog_bar)
@@ -507,11 +508,17 @@ class AeroSuiteQtApp(QMainWindow):
     # USB MANAGEMENT & SIGNALS
     # ---------------------------------------------------------
     def _refresh_usb_drives(self):
+        if hasattr(self, "btn_refresh_usb"):
+            self.btn_refresh_usb.setText("🔄 Scanning...")
+            self.btn_refresh_usb.setStyleSheet(f"color: {theme.CYAN_PRIMARY};")
+            QApplication.processEvents()
+
         drives = get_removable_drives()
         self._on_usb_drives_changed(drives)
+
         if hasattr(self, "btn_refresh_usb"):
             self.btn_refresh_usb.setText("✓ Refreshed!")
-            self.btn_refresh_usb.setStyleSheet("color: #10B981;")
+            self.btn_refresh_usb.setStyleSheet(f"color: {theme.MINT_SUCCESS};")
             QTimer.singleShot(1200, lambda: (
                 self.btn_refresh_usb.setText("🔄 Refresh"),
                 self.btn_refresh_usb.setStyleSheet("")
@@ -1253,7 +1260,7 @@ class AeroSuiteQtApp(QMainWindow):
         banner = QFrame()
         banner.setProperty("class", "card")
         b_layout = QVBoxLayout(banner)
-        lbl_banner = QLabel("🔒 STRICT SAFETY LOCK: Only apps originating from your vetted apks/ repository can be uninstalled.\nSearches and purges from BOTH User Apps (/data/app) and System Apps (/system/priv-app & /system/app).")
+        lbl_banner = QLabel("🔒 STRICT SAFETY LOCK: Safely targets third-party applications while protecting factory car components (HVAC/AC, Audio, Control Units).\n🧹 DEEP CLEANUP: Purges application packages and residual data from both User (/data/app) and System partitions to reclaim storage.")
         lbl_banner.setStyleSheet(f"font-size: 11px; color: {theme.MINT_SUCCESS};")
         b_layout.addWidget(lbl_banner)
         layout.addWidget(banner)
@@ -1422,7 +1429,7 @@ class AeroSuiteQtApp(QMainWindow):
         banner = QFrame()
         banner.setProperty("class", "card")
         b_layout = QVBoxLayout(banner)
-        lbl_banner = QLabel("💡 Select an application below to generate an auto-launch USB payload.\nWhen plugged into the vehicle, the script brings the chosen application to the foreground immediately.")
+        lbl_banner = QLabel("🚀 DIRECT LAUNCH PAYLOAD: Installed an app that has no launcher icon on the car screen? 😎\nSelect the app below to prepare a launch USB. When inserted into the IVI screen, it directly brings the targeted app to the foreground even if hidden from the stock application drawer.")
         lbl_banner.setStyleSheet(f"font-size: 11px; color: {theme.TEXT_MUTED};")
         b_layout.addWidget(lbl_banner)
         layout.addWidget(banner)
@@ -1584,9 +1591,11 @@ class AeroSuiteQtApp(QMainWindow):
         c_layout.addWidget(lbl_head)
 
         lbl_desc = QLabel(
-            "Unlocks the hidden native Android Settings app on the Dongfeng IVI screen.\n\n"
-            "• Access Bluetooth, Wi-Fi, Storage, Developer Options, and Apps Permissions.\n"
-            "• Instant one-touch launcher payload."
+            "Unlocks native Android Settings not visible in the standard car interface, without requiring a screen reboot:\n\n"
+            "• 🛠️ Developer Options: Access USB Debugging and developer settings.\n"
+            "• 📶 Network & Connectivity: Control Wi-Fi, Hotspot, and Bluetooth connections.\n"
+            "• 💾 Storage Management: Inspect available internal and onboard storage.\n"
+            "• 🔐 Permissions & Languages: Manage application permissions, system languages, and advanced preferences."
         )
         lbl_desc.setStyleSheet(f"font-size: 12px; color: {theme.TEXT_PRIMARY};")
         c_layout.addWidget(lbl_desc)
@@ -1640,11 +1649,11 @@ class AeroSuiteQtApp(QMainWindow):
         c_layout.addWidget(lbl_head)
 
         lbl_desc = QLabel(
-            "Injects a lightweight, battery-efficient Google Play Services ecosystem into Dongfeng Shine IVI:\n\n"
-            "• MicroG GmsCore: Google Account login, Push Notifications (FCM), Maps API.\n"
-            "• Google Play Store & Services Framework (GSF).\n"
-            "• Voice Recognizer & Speech services for hands-free search.\n\n"
-            "Optimized for Android 9/10/11 automotive head units."
+            "Deploys an integrated Google Play Services suite for Dongfeng Shine with an engineered installation sequence:\n\n"
+            "• ⚙️ System Integration: Extracts essential native runtime libraries (.so) into system paths and configures voice recognition permissions (voice_recognizers.xml).\n"
+            "• 👤 Google Account Sign-In: Sign in with your Google account seamlessly.\n"
+            "• 🛒 Google Play Store: Download, install, and update your favorite applications.\n"
+            "• 🗺️ Google Maps & Dependent Apps: Run Google Maps with your account and saved favorites, plus all apps requiring Google Play Services."
         )
         lbl_desc.setStyleSheet(f"font-size: 12px; color: {theme.TEXT_PRIMARY};")
         c_layout.addWidget(lbl_desc)
@@ -1666,7 +1675,7 @@ class AeroSuiteQtApp(QMainWindow):
         letter = self.current_usb.letter
         confirm_msg = (
             f"Are you sure you want to prepare Google Play Services USB on drive {letter}?\n\n"
-            f"This will package MicroG Core, Google Play Store, Services Framework, and voice permissions to inject into your vehicle."
+            f"This will package the integrated Google Play Services suite, native runtime libraries, and voice permissions for your vehicle."
         )
         if not self.show_confirm_dialog("Confirm Google Services Installation", confirm_msg, confirm_text="🌐 Prepare GMS USB"):
             return
@@ -1699,9 +1708,10 @@ class AeroSuiteQtApp(QMainWindow):
         c_layout.addWidget(lbl_head)
 
         lbl_desc = QLabel(
-            "Safely removes all MicroG, Play Store, and Google Services Framework packages from the IVI screen.\n\n"
-            "• Does not touch user applications or car settings.\n"
-            "• Restores stock factory Google-free state."
+            "Safely removes the Google Play Services suite and targeted components without manual deletion:\n\n"
+            "• 🗑️ Complete Removal: Purges the services suite and targeted system files.\n"
+            "• 🧹 Account & Trace Cleanup: Cleans account data and residual traces supported for removal.\n"
+            "• 🔄 State Restoration: Restores the screen to its closest pre-GMS state, ready for dealership maintenance or fresh customization."
         )
         lbl_desc.setStyleSheet(f"font-size: 12px; color: {theme.TEXT_PRIMARY};")
         c_layout.addWidget(lbl_desc)
@@ -1723,7 +1733,7 @@ class AeroSuiteQtApp(QMainWindow):
         letter = self.current_usb.letter
         confirm_msg = (
             f"Are you sure you want to prepare Google Services Removal USB on drive {letter}?\n\n"
-            f"This will prepare a script to purge MicroG and Play Store components from your car screen."
+            f"This will prepare a script to safely purge Google Play Services and clean associated account data from your car screen."
         )
         if not self.show_confirm_dialog("Confirm Google Services Removal", confirm_msg, confirm_text="🧹 Prepare Removal USB", is_danger=True):
             return
@@ -1755,9 +1765,9 @@ class AeroSuiteQtApp(QMainWindow):
         c_layout.addWidget(lbl_head)
 
         lbl_desc = QLabel(
-            "Disables the stock factory home screen (launcher), allowing custom third-party launchers\n"
-            "(e.g., Nova Launcher, Car Launcher Pro, Vivid Navigation) to become the primary interface.\n\n"
-            "⚠️ IMPORTANT: Make sure at least one custom launcher is installed before disabling the stock launcher!"
+            "Freezes the stock factory home screen (launcher) so custom automotive launchers\n"
+            "(e.g., AGAMA Car Launcher) boot up instantly as the primary interface without screen overlap or lag.\n\n"
+            "⚠️ IMPORTANT: Ensure you have an alternative launcher installed on the car screen before freezing the factory launcher!"
         )
         lbl_desc.setStyleSheet(f"font-size: 12px; color: {theme.TEXT_PRIMARY};")
         c_layout.addWidget(lbl_desc)
@@ -1811,7 +1821,7 @@ class AeroSuiteQtApp(QMainWindow):
         c_layout.addWidget(lbl_head)
 
         lbl_desc = QLabel(
-            "Re-enables the original stock factory home screen launcher and restores default Dongfeng IVI behavior."
+            "Unfreezes the stock factory home screen launcher in seconds with one click, restoring the original factory interface to full operation."
         )
         lbl_desc.setStyleSheet(f"font-size: 12px; color: {theme.TEXT_PRIMARY};")
         c_layout.addWidget(lbl_desc)
@@ -1862,7 +1872,7 @@ class AeroSuiteQtApp(QMainWindow):
         c_layout.addWidget(lbl_head)
 
         lbl_desc = QLabel(
-            "Performs a clean, graceful software reboot of the Dongfeng IVI screen without requiring vehicle restart."
+            "Performs a quick, safe restart of the infotainment screen without turning off the vehicle engine or disconnecting the car battery."
         )
         lbl_desc.setStyleSheet(f"font-size: 12px; color: {theme.TEXT_PRIMARY};")
         c_layout.addWidget(lbl_desc)
@@ -1913,7 +1923,10 @@ class AeroSuiteQtApp(QMainWindow):
         lbl_head1.setStyleSheet(f"font-size: 15px; font-weight: bold; color: {theme.CYAN_PRIMARY};")
         cp_layout.addWidget(lbl_head1)
 
-        lbl_desc1 = QLabel("Extracts full vehicle backup: APKs, App Data (/data/data), vehicle calibration configs, and logs.")
+        lbl_desc1 = QLabel(
+            "Creates a 1:1 clone of your screen: user applications with data and accounts, launcher & widget layouts, saved Wi-Fi networks, and paired Bluetooth devices.\n"
+            "Prepares USB payload ready to extract your personalized backup directly to USB."
+        )
         lbl_desc1.setStyleSheet(f"font-size: 11px; color: {theme.TEXT_MUTED};")
         cp_layout.addWidget(lbl_desc1)
 
@@ -1934,7 +1947,7 @@ class AeroSuiteQtApp(QMainWindow):
         lbl_head2.setStyleSheet(f"font-size: 15px; font-weight: bold; color: {theme.MINT_SUCCESS};")
         cs_layout.addWidget(lbl_head2)
 
-        lbl_desc2 = QLabel("Safely copies vehicle backup files from your USB flash drive into the permanent PC Vault folder.")
+        lbl_desc2 = QLabel("Safely copies vehicle backup files from your USB flash drive into the permanent PC Vault repository.")
         lbl_desc2.setStyleSheet(f"font-size: 11px; color: {theme.TEXT_MUTED};")
         cs_layout.addWidget(lbl_desc2)
 
@@ -2005,7 +2018,13 @@ class AeroSuiteQtApp(QMainWindow):
         lbl_head.setStyleSheet(f"font-size: 15px; font-weight: bold; color: {theme.CYAN_PRIMARY};")
         c_layout.addWidget(lbl_head)
 
-        lbl_desc = QLabel("Packages your saved PC Vault vehicle backup archive onto USB to restore your car screen to an exact state.")
+        lbl_desc = QLabel(
+            "Restores the infotainment screen to its closest saved state from your PC Vault backup archive:\n\n"
+            "• ⚙️ App Data & Interface: Restores supported app data, preferences, launcher icons, and widgets.\n"
+            "• 🚘 Launcher State: Restores the exact launcher state recorded during backup (including Freeze state).\n"
+            "• 📶 Connectivity: Restores saved Wi-Fi networks and paired Bluetooth devices.\n"
+            "• ⚡ Smart Delta Restore: Skips already installed packages to maximize speed and minimize downtime."
+        )
         lbl_desc.setStyleSheet(f"font-size: 12px; color: {theme.TEXT_PRIMARY};")
         c_layout.addWidget(lbl_desc)
 
@@ -2079,12 +2098,10 @@ class AeroSuiteQtApp(QMainWindow):
         c_layout.addWidget(lbl_head)
 
         lbl_desc = QLabel(
-            "Completely restores the head unit to factory state before dealership inspection:\n"
-            "• Preserves all 69 factory priv-apps + 33 apps and re-enables stock launcher\n"
-            "• Deep Bluetooth hardware chip wipe (AT#BX & NVRAM clear)\n"
-            "• Wipes all user APKs, accounts, databases, Wi-Fi networks, and storage\n"
-            "• Deep telemetry wipe: Purges all crash tombstones, ANR traces, DropBox & system logs\n"
-            "• Locks system Read-Only and triggers automatic reboot to pristine factory state."
+            "The ultimate disaster recovery tool & factory restoration payload for Dongfeng Shine:\n\n"
+            "• 🛠️ Auto-Healing System Repair: Restores missing or corrupted stock factory system applications from clean repository.\n"
+            "• 🧹 Revert to Original State: Purges third-party applications, Google services, custom accounts, and residual data.\n"
+            "• 🏁 Pre-Dealership Readiness: Completely restores the head unit to stock dealership condition before routine vehicle inspection."
         )
         lbl_desc.setStyleSheet(f"font-size: 12px; color: {theme.TEXT_PRIMARY};")
         c_layout.addWidget(lbl_desc)
@@ -2140,8 +2157,10 @@ class AeroSuiteQtApp(QMainWindow):
         c_layout.addWidget(lbl_head)
 
         lbl_desc = QLabel(
-            "Creates a payload that extracts Android logcat, dmesg kernel logs, tombstone crash dumps, and system properties\n"
-            "from your car screen onto the USB drive for debugging."
+            "Diagnose screen issues accurately instead of guessing! 🔍\n\n"
+            "• 📋 System Diagnostics: Extracts Logcat, Dmesg kernel logs, memory info, package states, and system properties.\n"
+            "• ⚠️ Error Analysis: Captures crash tombstones, ANR traces, and system error events.\n"
+            "• 👨‍💻 Developer Sharing: Packages diagnostic reports for developers to pinpoint exact root causes and provide targeted solutions."
         )
         lbl_desc.setStyleSheet(f"font-size: 12px; color: {theme.TEXT_PRIMARY};")
         c_layout.addWidget(lbl_desc)
