@@ -26,7 +26,57 @@ def calculate_dir_size(directory: str) -> tuple:
     return total_bytes, file_count
 
 
-def copy_tree_with_progress(src: str, dst: str, progress_callback=None, log_func=None, cancel_check=None):
+def copy_file_with_chunk_progress(
+    src_file: str,
+    dest_file: str,
+    chunk_size: int = 256 * 1024,
+    chunk_callback=None,
+    cancel_check=None
+) -> bool:
+    """
+    Copies a single file from src_file to dest_file in chunks (default 256KB),
+    calling chunk_callback(chunk_bytes_copied, file_copied_bytes, file_total_bytes) after each chunk.
+    Preserves file timestamps and attributes.
+    Returns True on success, False if cancelled or on error.
+    """
+    if not os.path.isfile(src_file):
+        return False
+
+    if cancel_check and cancel_check():
+        return False
+
+    os.makedirs(os.path.dirname(os.path.abspath(dest_file)), exist_ok=True)
+    file_total_bytes = os.path.getsize(src_file)
+    file_copied_bytes = 0
+
+    try:
+        with open(src_file, "rb") as f_in, open(dest_file, "wb") as f_out:
+            while True:
+                if cancel_check and cancel_check():
+                    f_out.close()
+                    try:
+                        os.remove(dest_file)
+                    except Exception:
+                        pass
+                    return False
+                chunk = f_in.read(chunk_size)
+                if not chunk:
+                    break
+                f_out.write(chunk)
+                file_copied_bytes += len(chunk)
+                if chunk_callback:
+                    chunk_callback(len(chunk), file_copied_bytes, file_total_bytes)
+
+        try:
+            shutil.copystat(src_file, dest_file)
+        except Exception:
+            pass
+        return True
+    except Exception:
+        return False
+
+
+def copy_tree_with_progress(src: str, dst: str, progress_callback=None, log_func=None, cancel_check=None, scale_range: tuple = (0.0, 1.0)):
     """
     Copies directory tree from src to dst in 1MB chunks, emitting fine-grained progress.
     progress_callback format:
@@ -75,7 +125,8 @@ def copy_tree_with_progress(src: str, dst: str, progress_callback=None, log_func
 
                         elapsed = time.time() - start_time
                         speed_mb_s = (copied_bytes / (1024 * 1024)) / max(elapsed, 0.1)
-                        percent = min(1.0, copied_bytes / total_bytes)
+                        s_min, s_max = scale_range
+                        percent = s_min + (s_max - s_min) * min(1.0, copied_bytes / total_bytes)
                         copied_mb = copied_bytes / (1024 * 1024)
                         total_mb = total_bytes / (1024 * 1024)
 
@@ -88,7 +139,7 @@ def copy_tree_with_progress(src: str, dst: str, progress_callback=None, log_func
                 _log(f"  ⚠ Failed copying {fname_short}: {e}")
 
     if progress_callback:
-        progress_callback(1.0, "Complete", 0.0, total_bytes / (1024 * 1024), total_bytes / (1024 * 1024))
+        progress_callback(scale_range[1], "Complete", 0.0, total_bytes / (1024 * 1024), total_bytes / (1024 * 1024))
     return True
 
 

@@ -8,7 +8,7 @@ import sys
 import threading
 import time
 
-from PySide6.QtCore import Qt, QThread, Signal, Slot, QObject, QTimer, QPoint
+from PySide6.QtCore import Qt, QThread, Signal, Slot, QObject, QTimer, QPoint, QPropertyAnimation, QEasingCurve
 from PySide6.QtGui import QIcon, QFont, QColor, QTextCursor, QAction, QCursor
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
@@ -86,7 +86,11 @@ class PayloadWorker(QThread):
                     val = max(0, min(100, val))
                     status_text = str(text)
                     if len(a) >= 3 and isinstance(a[1], (int, float)) and isinstance(a[2], (int, float)) and a[2] > 0:
-                        status_text = f"Transferring {text} ({a[1]:.1f}/{a[2]:.1f} MB)"
+                        spd = a[0] if isinstance(a[0], (int, float)) and a[0] > 0 else 0.0
+                        if spd > 0.05:
+                            status_text = f"Transferring {text} ({a[1]:.1f}/{a[2]:.1f} MB) • {spd:.1f} MB/s"
+                        else:
+                            status_text = f"Transferring {text} ({a[1]:.1f}/{a[2]:.1f} MB)"
                     self.progress_signal.emit(val, status_text)
                 except Exception:
                     pass
@@ -104,7 +108,7 @@ class PayloadWorker(QThread):
             if "progress_func" in accepted or has_var_kw:
                 call_kwargs["progress_func"] = _progress
             if "progress_callback" in accepted or has_var_kw:
-                call_kwargs["progress_callback"] = lambda pct, cur_f="", spd=0.0, c_mb=0.0, t_mb=0.0, *a, **k: _progress(pct, f"Syncing {cur_f} ({c_mb:.1f}/{t_mb:.1f} MB)" if cur_f else "Syncing...")
+                call_kwargs["progress_callback"] = lambda pct, cur_f="", spd=0.0, c_mb=0.0, t_mb=0.0, *a, **k: _progress(pct, cur_f, spd, c_mb, t_mb)
             if "cancel_check" in accepted or has_var_kw:
                 call_kwargs["cancel_check"] = _cancel_check
 
@@ -427,6 +431,8 @@ class AeroSuiteQtApp(QMainWindow):
         self.progress_bar.setFixedWidth(260)
         self.progress_bar.setFixedHeight(22)
         self.progress_bar.setValue(0)
+        self.progress_anim = QPropertyAnimation(self.progress_bar, b"value")
+        self.progress_anim.setEasingCurve(QEasingCurve.OutQuad)
         prog_bar.addWidget(self.progress_bar)
         bottom_layout.addLayout(prog_bar)
 
@@ -804,16 +810,40 @@ class AeroSuiteQtApp(QMainWindow):
     # ---------------------------------------------------------
     # PROGRESS & BACKGROUND TASK MANAGEMENT
     # ---------------------------------------------------------
+    def _smooth_set_progress(self, target_val: int, status_text: str = ""):
+        """Smoothly interpolates progress bar value using QPropertyAnimation without sudden jerky jumps."""
+        if status_text:
+            self.lbl_status.setText(status_text)
+
+        cur = self.progress_bar.value()
+        if target_val <= cur:
+            if target_val == 0:
+                self.progress_anim.stop()
+                self.progress_bar.setValue(0)
+            return
+
+        diff = target_val - cur
+        # Adaptive duration: faster for small incremental byte chunks, smooth for larger steps
+        duration = min(280, max(80, diff * 12))
+        if target_val >= 100:
+            duration = 180
+
+        self.progress_anim.stop()
+        self.progress_anim.setDuration(duration)
+        self.progress_anim.setStartValue(cur)
+        self.progress_anim.setEndValue(target_val)
+        self.progress_anim.start()
+
     def set_operation_state(self, is_busy: bool, loading_text: str = ""):
         self.is_busy = is_busy
         self.btn_cancel_op.setVisible(is_busy)
         if is_busy:
-            self.lbl_status.setText(loading_text or "Operation in progress...")
-            self.progress_bar.setValue(5)
+            self.progress_anim.stop()
+            self.progress_bar.setValue(0)
+            self._smooth_set_progress(5, loading_text or "Operation in progress...")
         else:
-            self.lbl_status.setText("System Idle — Ready for operation.")
-            self.progress_bar.setValue(100)
-            QTimer.singleShot(1500, lambda: self.progress_bar.setValue(0))
+            self._smooth_set_progress(100, "System Idle — Ready for operation.")
+            QTimer.singleShot(1500, lambda: self._smooth_set_progress(0) if not self.is_busy else None)
 
     def cancel_current_operation(self):
         if self.current_worker and self.is_busy:
@@ -827,7 +857,7 @@ class AeroSuiteQtApp(QMainWindow):
         worker = PayloadWorker(target_func, *args, cancel_event=self.cancel_event, **kwargs)
         self.current_worker = worker
 
-        worker.progress_signal.connect(lambda val, txt: (self.progress_bar.setValue(val), self.lbl_status.setText(txt)))
+        worker.progress_signal.connect(self._smooth_set_progress)
         worker.log_signal.connect(self.log_terminal)
 
         def _on_finished(ok, err):
