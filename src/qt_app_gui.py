@@ -231,7 +231,7 @@ class AeroSuiteQtApp(QMainWindow):
         self.usb_combo = QComboBox()
         self.usb_combo.setObjectName("usbCombo")
         self.usb_combo.setFixedWidth(300)
-        self.usb_combo.setFixedHeight(34)
+        self.usb_combo.setFixedHeight(28)
         self.usb_combo.setCursor(Qt.PointingHandCursor)
         self.usb_combo.setContextMenuPolicy(Qt.CustomContextMenu)
         self.usb_combo.customContextMenuRequested.connect(self._show_usb_menu)
@@ -240,7 +240,7 @@ class AeroSuiteQtApp(QMainWindow):
 
         self.btn_refresh_usb = QPushButton("🔄 Refresh")
         self.btn_refresh_usb.setObjectName("btnRefreshUsb")
-        self.btn_refresh_usb.setFixedHeight(34)
+        self.btn_refresh_usb.setFixedHeight(28)
         self.btn_refresh_usb.setFixedWidth(115)
         self.btn_refresh_usb.setCursor(Qt.PointingHandCursor)
         self.btn_refresh_usb.setToolTip("Refresh & Rescan USB Flash Drives")
@@ -249,9 +249,9 @@ class AeroSuiteQtApp(QMainWindow):
 
         self.btn_usb_settings = QPushButton("⚙️")
         self.btn_usb_settings.setObjectName("btnUsbSettings")
-        self.btn_usb_settings.setFixedSize(34, 34)
+        self.btn_usb_settings.setFixedSize(28, 28)
         self.btn_usb_settings.setCursor(Qt.PointingHandCursor)
-        self.btn_usb_settings.setToolTip("Flash Drive Settings & Tools (Open in Explorer, Clean Drive, Properties)")
+        self.btn_usb_settings.setToolTip("Flash Drive Settings & Tools (Open in Explorer, Format FAT32, Rescan)")
         self.btn_usb_settings.clicked.connect(lambda: self._show_usb_menu(button_anchor=True))
         usb_box.addWidget(self.btn_usb_settings)
 
@@ -340,6 +340,7 @@ class AeroSuiteQtApp(QMainWindow):
 
             for feat_id, feat_icon, feat_title, feat_desc in cat_feats:
                 item_btn = QFrame()
+                item_btn.setObjectName(f"navItem_{feat_id}")
                 item_btn.setProperty("class", "navItem")
                 item_btn.setFixedHeight(48)
                 item_btn.setCursor(Qt.PointingHandCursor)
@@ -372,7 +373,8 @@ class AeroSuiteQtApp(QMainWindow):
                 self.feature_buttons[feat_id] = {
                     "frame": item_btn,
                     "title": t_lbl,
-                    "desc": d_lbl
+                    "desc": d_lbl,
+                    "icon": icon_lbl
                 }
 
         self.nav_layout.addStretch()
@@ -497,9 +499,13 @@ class AeroSuiteQtApp(QMainWindow):
         for fid, item in self.feature_buttons.items():
             fr = item["frame"]
             t = item["title"]
-            if fid == feature_id:
+            d = item["desc"]
+            icon = item.get("icon")
+            obj_name = fr.objectName() or f"navItem_{fid}"
+            is_active = (fid == feature_id)
+            if is_active:
                 fr.setStyleSheet(f"""
-                    QFrame {{
+                    QFrame#{obj_name} {{
                         background-color: {theme.CYAN_ALPHA_15};
                         border: 1px solid {theme.CYAN_PRIMARY};
                         border-radius: 8px;
@@ -510,12 +516,19 @@ class AeroSuiteQtApp(QMainWindow):
                     }}
                 """)
                 t.setStyleSheet(f"font-size: 12px; font-weight: bold; color: {theme.CYAN_PRIMARY}; border: none; background: transparent;")
+                d.setStyleSheet(f"font-size: 10px; color: {theme.TEXT_MUTED}; border: none; background: transparent;")
+                if icon:
+                    icon.setStyleSheet(f"font-size: 15px; color: {theme.CRIMSON_DANGER if fid == 'factory_reset' else theme.CYAN_PRIMARY}; border: none; background: transparent;")
             else:
                 fr.setStyleSheet(f"""
-                    QFrame {{
+                    QFrame#{obj_name} {{
                         background-color: transparent;
                         border: 1px solid transparent;
                         border-radius: 8px;
+                    }}
+                    QFrame#{obj_name}:hover {{
+                        background-color: {theme.SURFACE_2};
+                        border: 1px solid {theme.BORDER_SLATE};
                     }}
                     QLabel {{
                         border: none;
@@ -523,6 +536,9 @@ class AeroSuiteQtApp(QMainWindow):
                     }}
                 """)
                 t.setStyleSheet(f"font-size: 12px; font-weight: bold; color: {theme.CRIMSON_DANGER if fid == 'factory_reset' else theme.TEXT_PRIMARY}; border: none; background: transparent;")
+                d.setStyleSheet(f"font-size: 10px; color: {theme.TEXT_MUTED}; border: none; background: transparent;")
+                if icon:
+                    icon.setStyleSheet(f"font-size: 15px; color: {theme.CRIMSON_DANGER if fid == 'factory_reset' else theme.CYAN_PRIMARY}; border: none; background: transparent;")
 
     # ---------------------------------------------------------
     # USB MANAGEMENT & SIGNALS
@@ -595,6 +611,7 @@ class AeroSuiteQtApp(QMainWindow):
             self.usb_status_dot.setStyleSheet(f"color: {theme.CRIMSON_DANGER}; font-size: 16px;")
             self.usb_status_dot.setToolTip("No USB Flash Drive Detected")
             self.usb_combo.setToolTip("Please insert a USB flash drive to prepare payloads.")
+            self._update_backup_sync_button()
             return
 
         d = self.current_usb
@@ -613,12 +630,14 @@ class AeroSuiteQtApp(QMainWindow):
             f"💡 Click ⚙️ or Right-Click for Settings & Tools"
         )
         self.usb_combo.setToolTip(tip)
+        self._update_backup_sync_button()
 
     def _on_usb_selected(self, index: int):
         drive = self.usb_combo.currentData()
         if drive and isinstance(drive, UsbDriveInfo):
             self.current_usb = drive
             self._update_usb_status_ui()
+            self._update_backup_sync_button()
             self.log_terminal(f"Target USB Drive switched to: {drive.letter} [{drive.label}] ({drive.free_gb:.1f} GB free)", "mint")
 
     _on_user_selected_drive = _on_usb_selected
@@ -2043,15 +2062,37 @@ class AeroSuiteQtApp(QMainWindow):
         lbl_desc2.setStyleSheet(f"font-size: 11px; color: {theme.TEXT_MUTED};")
         cs_layout.addWidget(lbl_desc2)
 
-        btn_sync = QPushButton("📥 SYNC USB BACKUP TO PC VAULT")
-        btn_sync.setProperty("class", "btnSuccess")
-        btn_sync.setFixedHeight(38)
-        btn_sync.clicked.connect(self._execute_sync_to_pc)
-        cs_layout.addWidget(btn_sync)
+        self.btn_sync = QPushButton("📥 SYNC USB BACKUP TO PC VAULT")
+        self.btn_sync.setProperty("class", "btnSuccess")
+        self.btn_sync.setFixedHeight(38)
+        self.btn_sync.clicked.connect(self._execute_sync_to_pc)
+        cs_layout.addWidget(self.btn_sync)
         layout.addWidget(card_sync)
 
         layout.addStretch()
+        self._update_backup_sync_button()
         return view
+
+    def _update_backup_sync_button(self):
+        if not hasattr(self, "btn_sync"):
+            return
+        has_bk = False
+        bk_date = ""
+        if self.current_usb:
+            letter = self.current_usb.letter
+            flag1 = os.path.join(letter, "backup_complete.flag")
+            dir1 = os.path.join(letter, "Backup")
+            dir2 = os.path.join(letter, "PersonalBackup")
+            has_bk = bool(getattr(self.current_usb, "has_backup", False) or os.path.exists(flag1) or os.path.isdir(dir1) or os.path.isdir(dir2))
+            bk_date = getattr(self.current_usb, "backup_date", "")
+
+        if has_bk:
+            date_str = f" ({bk_date})" if bk_date else " (BACKUP DETECTED)"
+            self.btn_sync.setEnabled(True)
+            self.btn_sync.setText(f"📥 SYNC VEHICLE BACKUP TO PC VAULT{date_str}")
+        else:
+            self.btn_sync.setEnabled(False)
+            self.btn_sync.setText("📥 NO VEHICLE BACKUP DETECTED ON USB DRIVE")
 
     def _execute_prepare_backup_usb(self):
         if not self._validate_usb_filesystem(): return
@@ -2121,18 +2162,31 @@ class AeroSuiteQtApp(QMainWindow):
         c_layout.addWidget(lbl_desc)
 
         self.restore_combo = QComboBox()
-        self._populate_restore_combo()
         c_layout.addWidget(self.restore_combo)
 
-        btn_restore = QPushButton("📥 PREPARE RESTORE USB")
-        btn_restore.setProperty("class", "btnPrimary")
-        btn_restore.setFixedHeight(44)
-        btn_restore.clicked.connect(self._execute_restore)
-        c_layout.addWidget(btn_restore)
+        self.btn_restore = QPushButton("📥 PREPARE RESTORE USB")
+        self.btn_restore.setProperty("class", "btnPrimary")
+        self.btn_restore.setFixedHeight(44)
+        self.btn_restore.clicked.connect(self._execute_restore)
+        c_layout.addWidget(self.btn_restore)
+
+        self._populate_restore_combo()
+        self.restore_combo.currentIndexChanged.connect(lambda: self._update_restore_button_state())
 
         layout.addWidget(card)
         layout.addStretch()
         return view
+
+    def _update_restore_button_state(self):
+        if not hasattr(self, "btn_restore"):
+            return
+        b_path = self.restore_combo.currentData() if hasattr(self, "restore_combo") else None
+        if b_path and os.path.exists(b_path):
+            self.btn_restore.setEnabled(True)
+            self.btn_restore.setText("📥 PREPARE RESTORE USB")
+        else:
+            self.btn_restore.setEnabled(False)
+            self.btn_restore.setText("⚠️ NO SAVED BACKUPS AVAILABLE IN PC VAULT")
 
     def _populate_restore_combo(self):
         self.restore_combo.clear()
@@ -2147,6 +2201,7 @@ class AeroSuiteQtApp(QMainWindow):
                 b_size = b.get("size_str") or f"{b.get('size_mb', 0):.1f} MB"
                 self.restore_combo.addItem(f"{b_name} ({b_date}, {b_size})", userData=b["path"])
             self.restore_combo.setEnabled(True)
+        self._update_restore_button_state()
 
     def _execute_restore(self):
         if not self._validate_usb_filesystem(): return

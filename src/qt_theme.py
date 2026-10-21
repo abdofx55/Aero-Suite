@@ -45,8 +45,7 @@ def get_application_stylesheet() -> str:
     }}
     QFrame[class="card"] QLabel,
     QFrame[class="card"] QCheckBox,
-    QFrame[class="card"] QRadioButton,
-    QFrame[class="card"] QWidget {{
+    QFrame[class="card"] QRadioButton {{
         background-color: transparent;
         border: none;
     }}
@@ -111,6 +110,7 @@ def get_application_stylesheet() -> str:
         padding: 6px 14px;
         font-size: 12px;
         font-weight: 600;
+        outline: none;
     }}
     QPushButton:hover {{
         background-color: {theme.SURFACE_3};
@@ -121,29 +121,34 @@ def get_application_stylesheet() -> str:
     }}
     QPushButton:disabled {{
         background-color: {theme.SURFACE_1};
-        color: {theme.TEXT_DIM};
-        border-color: {theme.BORDER_SLATE};
+        color: {theme.TEXT_MUTED};
+        border: 1px solid {theme.BORDER_SLATE};
     }}
 
     /* Primary Accent Buttons (Cyan) */
     QPushButton[class="btnPrimary"] {{
         background-color: {theme.CYAN_PRIMARY};
-        color: #070A0F;
-        border: none;
+        color: #000000;
+        border: 1px solid {theme.CYAN_PRIMARY};
         font-size: 13px;
         font-weight: bold;
         padding: 10px 20px;
         border-radius: 6px;
+        outline: none;
     }}
     QPushButton[class="btnPrimary"]:hover {{
         background-color: {theme.CYAN_HOVER};
+        border: 1px solid {theme.CYAN_HOVER};
+        color: #000000;
     }}
     QPushButton[class="btnPrimary"]:pressed {{
         background-color: {theme.CYAN_DIM};
-        color: {theme.TEXT_PRIMARY};
+        border: 1px solid {theme.CYAN_DIM};
+        color: #000000;
     }}
     QPushButton[class="btnPrimary"]:disabled {{
-        background-color: {theme.SURFACE_3};
+        background-color: {theme.SURFACE_2};
+        border: 1px solid {theme.BORDER_SLATE};
         color: {theme.TEXT_MUTED};
     }}
 
@@ -151,31 +156,54 @@ def get_application_stylesheet() -> str:
     QPushButton[class="btnDanger"] {{
         background-color: {theme.CRIMSON_DANGER};
         color: #FFFFFF;
-        border: none;
+        border: 1px solid {theme.CRIMSON_DANGER};
         font-size: 13px;
         font-weight: bold;
         padding: 10px 20px;
         border-radius: 6px;
+        outline: none;
     }}
     QPushButton[class="btnDanger"]:hover {{
         background-color: {theme.CRIMSON_HOVER};
+        border: 1px solid {theme.CRIMSON_HOVER};
+        color: #FFFFFF;
+    }}
+    QPushButton[class="btnDanger"]:pressed {{
+        background-color: #B91C1C;
+        border: 1px solid #B91C1C;
+        color: #FFFFFF;
     }}
     QPushButton[class="btnDanger"]:disabled {{
-        background-color: {theme.SURFACE_3};
+        background-color: {theme.SURFACE_2};
+        border: 1px solid {theme.BORDER_SLATE};
         color: {theme.TEXT_MUTED};
     }}
 
     /* Success Buttons (Mint) */
     QPushButton[class="btnSuccess"] {{
         background-color: {theme.MINT_SUCCESS};
-        color: #070A0F;
-        border: none;
+        color: #000000;
+        border: 1px solid {theme.MINT_SUCCESS};
         font-size: 12px;
         font-weight: bold;
+        padding: 8px 16px;
         border-radius: 6px;
+        outline: none;
     }}
     QPushButton[class="btnSuccess"]:hover {{
         background-color: {theme.MINT_HOVER};
+        border: 1px solid {theme.MINT_HOVER};
+        color: #000000;
+    }}
+    QPushButton[class="btnSuccess"]:pressed {{
+        background-color: #059669;
+        border: 1px solid #059669;
+        color: #000000;
+    }}
+    QPushButton[class="btnSuccess"]:disabled {{
+        background-color: {theme.SURFACE_2};
+        border: 1px solid {theme.BORDER_SLATE};
+        color: {theme.TEXT_MUTED};
     }}
 
     /* Line Edits & Search Boxes */
@@ -235,26 +263,28 @@ def get_application_stylesheet() -> str:
         background-color: {theme.SURFACE_2};
         color: {theme.TEXT_PRIMARY};
         border: 1px solid {theme.BORDER_SLATE};
-        border-radius: 8px;
-        padding: 4px 24px 4px 12px;
+        border-radius: 6px;
+        padding: 1px 24px 1px 8px;
         font-size: 11px;
         font-weight: bold;
-        min-height: 32px;
+        height: 24px;
+        min-height: 24px;
+        max-height: 24px;
     }}
     QComboBox#usbCombo:hover {{
-        border-color: {theme.CYAN_PRIMARY};
+        border: 1px solid {theme.CYAN_PRIMARY};
         background-color: {theme.SURFACE_3};
     }}
     QComboBox#usbCombo::drop-down {{
         subcontrol-origin: padding;
         subcontrol-position: top right;
-        width: 24px;
+        width: 22px;
         border: none;
     }}
     QComboBox#usbCombo::down-arrow {{
         image: url("assets/arrow_down.png");
-        width: 10px;
-        height: 10px;
+        width: 9px;
+        height: 9px;
     }}
     QComboBox#usbCombo::down-arrow:hover {{
         image: url("assets/arrow_down_cyan.png");
@@ -315,17 +345,19 @@ def get_application_stylesheet() -> str:
         background-color: {theme.SURFACE_2};
         color: {theme.CYAN_PRIMARY};
         border: 1px solid {theme.BORDER_SLATE};
-        border-radius: 8px;
-        padding: 4px 8px;
+        border-radius: 6px;
+        padding: 1px 8px;
         font-size: 11px;
         font-weight: bold;
-        min-height: 32px;
+        height: 24px;
+        min-height: 24px;
+        max-height: 24px;
         min-width: 115px;
         max-width: 115px;
     }}
     QPushButton#btnRefreshUsb:hover {{
         background-color: {theme.SURFACE_3};
-        border-color: {theme.CYAN_PRIMARY};
+        border: 1px solid {theme.CYAN_PRIMARY};
         color: #38BDF8;
     }}
     QPushButton#btnRefreshUsb:pressed {{
@@ -336,14 +368,19 @@ def get_application_stylesheet() -> str:
         background-color: {theme.SURFACE_2};
         color: {theme.TEXT_MUTED};
         border: 1px solid {theme.BORDER_SLATE};
-        border-radius: 8px;
-        font-size: 14px;
-        min-height: 32px;
-        min-width: 34px;
+        border-radius: 6px;
+        font-size: 13px;
+        height: 26px;
+        min-height: 26px;
+        max-height: 26px;
+        width: 26px;
+        min-width: 26px;
+        max-width: 26px;
+        padding: 0px;
     }}
     QPushButton#btnUsbSettings:hover {{
         background-color: {theme.SURFACE_3};
-        border-color: {theme.CYAN_PRIMARY};
+        border: 1px solid {theme.CYAN_PRIMARY};
         color: {theme.CYAN_PRIMARY};
     }}
     QPushButton#btnUsbSettings:pressed {{
