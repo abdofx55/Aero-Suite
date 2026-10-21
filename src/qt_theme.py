@@ -45,7 +45,27 @@ def get_application_stylesheet() -> str:
     }}
     QFrame[class="card"] QLabel,
     QFrame[class="card"] QCheckBox,
-    QFrame[class="card"] QRadioButton {{
+    QFrame[class="card"] QRadioButton,
+    QFrame[class="card"] QWidget {{
+        background-color: transparent;
+        border: none;
+    }}
+
+    /* Sidebar Navigation Items */
+    QFrame[class="navItem"] {{
+        background-color: transparent;
+        border: 1px solid transparent;
+        border-radius: 8px;
+    }}
+    QFrame[class="navItem"]:hover {{
+        background-color: {theme.SURFACE_2};
+        border: 1px solid {theme.BORDER_SLATE};
+    }}
+    QFrame[class="navItem"][active="true"] {{
+        background-color: {theme.CYAN_ALPHA_15};
+        border: 1px solid {theme.CYAN_PRIMARY};
+    }}
+    QFrame[class="navItem"] QLabel {{
         background-color: transparent;
         border: none;
     }}
@@ -249,20 +269,21 @@ def get_application_stylesheet() -> str:
         padding: 4px;
     }}
 
-    /* Compact Borderless Target Partition Dropdown (User App / System App) */
+    /* Compact Target Partition Dropdown (User App / System App) */
     QComboBox#comboTarget {{
-        background-color: transparent;
-        color: {theme.TEXT_MUTED};
-        border: none;
-        padding: 0px 18px 0px 2px;
+        background-color: {theme.SURFACE_2};
+        color: {theme.TEXT_PRIMARY};
+        border: 1px solid {theme.BORDER_SLATE};
+        border-radius: 4px;
+        padding: 1px 16px 1px 6px;
         font-size: 11px;
-        font-weight: 600;
+        font-weight: 500;
         min-height: 20px;
         max-height: 22px;
     }}
     QComboBox#comboTarget:hover {{
         color: {theme.CYAN_PRIMARY};
-        border: none;
+        border: 1px solid {theme.CYAN_PRIMARY};
     }}
     QComboBox#comboTarget::drop-down {{
         subcontrol-origin: padding;

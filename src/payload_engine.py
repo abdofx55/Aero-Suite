@@ -100,6 +100,88 @@ def clean_usb_drive(usb_drive: str, log_func=None, progress_func=None, cancel_ch
     return True
 
 
+def format_usb_drive(usb_drive: str, fs: str = "FAT32", label: str = "AERO_USB", log_func=None, progress_func=None, cancel_check=None) -> bool:
+    """
+    Formats the target USB drive as FAT32 (or exFAT) using PowerShell Format-Volume.
+    Fully integrated with progress callbacks, cancel check, and terminal logging.
+    """
+    def _log(msg, level="cyan"):
+        if log_func:
+            log_func(msg, level)
+        else:
+            print(f"[{level}] {msg}")
+
+    letter = usb_drive.upper().rstrip(":\\").strip()
+    if not letter or letter == "C":
+        _log("Safety block: Cannot format system drive C: or invalid drive.", "danger")
+        return False
+
+    if cancel_check and cancel_check():
+        _log("Format cancelled before start.", "warn")
+        return False
+
+    _log(f"── Formatting USB Drive: {letter}:\\ ({fs}) ──", "warn")
+    _log(f"Volume Label: {label} | Target FileSystem: {fs}", "dim")
+    if progress_func:
+        progress_func(0.1, f"Initializing format on {letter}:\\ ({fs})...")
+
+    # Format using PowerShell Format-Volume
+    ps_cmd = f"Format-Volume -DriveLetter {letter} -FileSystem {fs} -NewFileSystemLabel '{label}' -Force -Confirm:$false"
+    cmd = ["powershell", "-NoProfile", "-NonInteractive", "-Command", ps_cmd]
+
+    import subprocess
+    try:
+        proc = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
+        )
+
+        pct = 0.2
+        while proc.poll() is None:
+            if cancel_check and cancel_check():
+                proc.terminate()
+                _log("Format operation aborted by user.", "warn")
+                return False
+            time.sleep(0.4)
+            pct = min(0.85, pct + 0.1)
+            if progress_func:
+                progress_func(pct, f"Formatting {letter}:\\ ({fs})...")
+
+        stdout, stderr = proc.communicate()
+        if proc.returncode == 0:
+            if progress_func:
+                progress_func(1.0, f"Drive {letter}:\\ formatted successfully ({fs}).")
+            _log(f"✓ Drive {letter}:\\ successfully formatted to {fs} [Label: {label}]", "mint")
+            time.sleep(0.5)
+            return True
+        else:
+            err_msg = stderr.strip() or stdout.strip() or "Unknown formatting error"
+            _log(f"Format-Volume error: {err_msg}", "danger")
+
+            # Fallback for FAT32 using cmd format.com
+            if fs.upper() == "FAT32":
+                _log("Attempting fallback quick format via format.com...", "warn")
+                if progress_func:
+                    progress_func(0.5, f"Running fallback format on {letter}:\\...")
+                fallback_cmd = f"format {letter}: /FS:FAT32 /V:{label} /Q /Y"
+                res = subprocess.run(fallback_cmd, shell=True, capture_output=True, text=True)
+                if res.returncode == 0:
+                    if progress_func:
+                        progress_func(1.0, f"Drive {letter}:\\ formatted successfully ({fs}).")
+                    _log(f"✓ Drive {letter}:\\ successfully formatted to FAT32 via format.com", "mint")
+                    return True
+                else:
+                    _log(f"Fallback format failed: {res.stderr.strip() or res.stdout.strip()}", "danger")
+
+            return False
+    except Exception as e:
+        _log(f"Format execution failed: {e}", "danger")
+        return False
+
+
 def extract_so_libs(apk_path: str, output_dir: str, log_func=None):
     """Extracts armeabi-v7a/armeabi native .so libraries for system priv-app execution."""
     lib_arm_dir = os.path.join(output_dir, "lib", "arm")

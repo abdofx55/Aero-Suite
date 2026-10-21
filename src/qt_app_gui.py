@@ -340,7 +340,7 @@ class AeroSuiteQtApp(QMainWindow):
 
             for feat_id, feat_icon, feat_title, feat_desc in cat_feats:
                 item_btn = QFrame()
-                item_btn.setProperty("class", "card")
+                item_btn.setProperty("class", "navItem")
                 item_btn.setFixedHeight(48)
                 item_btn.setCursor(Qt.PointingHandCursor)
 
@@ -350,15 +350,15 @@ class AeroSuiteQtApp(QMainWindow):
 
                 icon_lbl = QLabel(feat_icon)
                 icon_lbl.setFixedWidth(24)
-                icon_lbl.setStyleSheet(f"font-size: 15px; color: {theme.CRIMSON_DANGER if feat_id == 'factory_reset' else theme.CYAN_PRIMARY};")
+                icon_lbl.setStyleSheet(f"font-size: 15px; color: {theme.CRIMSON_DANGER if feat_id == 'factory_reset' else theme.CYAN_PRIMARY}; background: transparent; border: none;")
                 ib_layout.addWidget(icon_lbl)
 
                 text_box = QVBoxLayout()
                 text_box.setSpacing(1)
                 t_lbl = QLabel(feat_title)
-                t_lbl.setStyleSheet(f"font-size: 12px; font-weight: bold; color: {theme.CRIMSON_DANGER if feat_id == 'factory_reset' else theme.TEXT_PRIMARY};")
+                t_lbl.setStyleSheet(f"font-size: 12px; font-weight: bold; color: {theme.CRIMSON_DANGER if feat_id == 'factory_reset' else theme.TEXT_PRIMARY}; background: transparent; border: none;")
                 d_lbl = QLabel(feat_desc)
-                d_lbl.setStyleSheet(f"font-size: 10px; color: {theme.TEXT_MUTED};")
+                d_lbl.setStyleSheet(f"font-size: 10px; color: {theme.TEXT_MUTED}; background: transparent; border: none;")
                 text_box.addWidget(t_lbl)
                 text_box.addWidget(d_lbl)
                 ib_layout.addLayout(text_box)
@@ -498,11 +498,31 @@ class AeroSuiteQtApp(QMainWindow):
             fr = item["frame"]
             t = item["title"]
             if fid == feature_id:
-                fr.setStyleSheet(f"background-color: {theme.CYAN_ALPHA_15}; border: 1px solid {theme.CYAN_PRIMARY}; border-radius: 8px;")
-                t.setStyleSheet(f"font-size: 12px; font-weight: bold; color: {theme.CYAN_PRIMARY};")
+                fr.setStyleSheet(f"""
+                    QFrame {{
+                        background-color: {theme.CYAN_ALPHA_15};
+                        border: 1px solid {theme.CYAN_PRIMARY};
+                        border-radius: 8px;
+                    }}
+                    QLabel {{
+                        border: none;
+                        background-color: transparent;
+                    }}
+                """)
+                t.setStyleSheet(f"font-size: 12px; font-weight: bold; color: {theme.CYAN_PRIMARY}; border: none; background: transparent;")
             else:
-                fr.setStyleSheet(f"background-color: transparent; border: 1px solid transparent; border-radius: 8px;")
-                t.setStyleSheet(f"font-size: 12px; font-weight: bold; color: {theme.CRIMSON_DANGER if fid == 'factory_reset' else theme.TEXT_PRIMARY};")
+                fr.setStyleSheet(f"""
+                    QFrame {{
+                        background-color: transparent;
+                        border: 1px solid transparent;
+                        border-radius: 8px;
+                    }}
+                    QLabel {{
+                        border: none;
+                        background-color: transparent;
+                    }}
+                """)
+                t.setStyleSheet(f"font-size: 12px; font-weight: bold; color: {theme.CRIMSON_DANGER if fid == 'factory_reset' else theme.TEXT_PRIMARY}; border: none; background: transparent;")
 
     # ---------------------------------------------------------
     # USB MANAGEMENT & SIGNALS
@@ -619,11 +639,8 @@ class AeroSuiteQtApp(QMainWindow):
         act_open = menu.addAction("📂 Open in Windows Explorer")
         act_open.triggered.connect(self._open_usb_in_explorer)
 
-        act_info = menu.addAction("ℹ️ View Drive Properties & Info")
-        act_info.triggered.connect(self._show_usb_drive_info_dialog)
-
-        act_clean = menu.addAction("🧹 Clean Old Payload Files from USB")
-        act_clean.triggered.connect(self._clean_current_usb_drive)
+        act_format = menu.addAction("⚡ Format Flash Drive (FAT32)")
+        act_format.triggered.connect(lambda: self._format_usb_fat32_interactive("FAT32"))
 
         menu.addSeparator()
         act_rescan = menu.addAction("🔄 Rescan Removable Drives")
@@ -646,41 +663,89 @@ class AeroSuiteQtApp(QMainWindow):
         except Exception as e:
             self.show_error_dialog("Error", f"Failed to open USB drive: {e}")
 
-    def _clean_current_usb_drive(self):
+    def _format_usb_fat32_interactive(self, target_fs: str = "FAT32"):
         if not self._check_usb_ready(): return
-        letter = self.current_usb.letter
-        if not self.show_confirm_dialog(
-            "Clean USB Drive",
-            f"Are you sure you want to clean target USB drive {letter}?\n\n"
-            f"This will remove previous update payloads ('update/' folder and 'custom_rep.sh') while preserving your other files.",
-            confirm_text="🧹 Clean Drive",
-            is_danger=True
-        ):
+        if self.is_busy:
+            self.show_error_dialog("Operation Busy", "Please wait for current operation to complete before formatting.")
             return
 
-        self.execute_payload_worker(
-            payload_engine.clean_usb_drive,
-            letter,
-            success_title="Drive Cleaned",
-            success_msg=f"Successfully cleaned update payloads from drive {letter}!",
-            error_title="Clean Failed"
-        )
-
-    def _show_usb_drive_info_dialog(self):
-        if not self._check_usb_ready(): return
         d = self.current_usb
-        info_text = (
-            f"Target USB Drive Specifications:\n\n"
-            f"• Drive Letter: {d.letter}\n"
-            f"• Volume Label: {d.label or 'Removable Disk'}\n"
-            f"• File System: {d.fs_name} ({'Optimal for Dongfeng IVI' if d.fs_name.upper() == 'FAT32' else 'Note: FAT32 recommended for car updates'})\n"
-            f"• Free Space: {d.free_gb:.2f} GB\n"
-            f"• Used Space: {d.used_gb:.2f} GB\n"
-            f"• Total Capacity: {d.total_gb:.2f} GB\n"
-            f"• Car Backup: {'Detected on Drive (' + d.backup_date + ')' if d.has_backup else 'None'}\n"
-            f"• Restore Payload: {'Prepared & Ready' if getattr(d, 'is_restore_ready', False) else 'None'}"
+        letter = d.letter
+        confirm_msg = (
+            f"Are you sure you want to format USB drive {letter}?\n\n"
+            f"• Target File System: {target_fs}\n"
+            f"• Volume Label: AERO_USB\n"
+            f"• Total Capacity: {d.total_gb:.1f} GB\n\n"
+            f"⚠️ CRITICAL WARNING:\n"
+            f"All existing files, partitions, and data on drive {letter} will be PERMANENTLY ERASED!\n\n"
+            f"Do you wish to proceed with formatting?"
         )
-        self.show_info_dialog("USB Flash Drive Information", info_text)
+        if not self.show_confirm_dialog(f"Format USB Drive ({target_fs})", confirm_msg, confirm_text=f"⚡ Format {letter}", is_danger=True):
+            return
+
+        from payload_engine import format_usb_drive
+
+        def _on_format_done(ok, err):
+            if ok:
+                QTimer.singleShot(1000, self._refresh_usb_drives)
+
+        self.execute_payload_worker(
+            format_usb_drive,
+            letter,
+            fs=target_fs,
+            label="AERO_USB",
+            success_title="USB Format Completed",
+            success_msg=f"Drive {letter} was successfully formatted as {target_fs}!"
+        )
+        if self.current_worker:
+            self.current_worker.finished_signal.connect(_on_format_done)
+
+    def _validate_usb_filesystem(self) -> bool:
+        """
+        Pre-flight check to verify target USB drive filesystem before preparing payload.
+        Vehicles require FAT32 (or exFAT for >32GB drives).
+        If not properly formatted, presents a modal warning with direct format action.
+        """
+        if not self._check_usb_ready():
+            return False
+
+        d = self.current_usb
+        fs = (d.fs_type or "").strip().upper()
+        size_gb = getattr(d, "total_gb", 0.0)
+
+        # FAT32 and FAT are valid for all drives. exFAT is valid for large drives (>32GB).
+        is_valid = (fs in ["FAT32", "FAT"]) or (fs == "EXFAT" and size_gb > 32.0)
+        if is_valid:
+            return True
+
+        rec_fs = "exFAT" if size_gb > 32.0 and fs != "FAT32" else "FAT32"
+
+        msg_box = QMessageBox(self)
+        msg_box.setWindowModality(Qt.WindowModal)
+        msg_box.setWindowTitle("⚠️ Incompatible USB File System")
+        msg_box.setIcon(QMessageBox.Warning)
+
+        warn_text = (
+            f"Target USB drive ({d.letter}) is currently formatted as {fs or 'Unknown'}.\n\n"
+            f"Vehicle infotainment systems (Dongfeng IVI) require FAT32 (or exFAT for large drives) "
+            f"to read and execute automotive payload scripts. Scripts placed on an {fs or 'unsupported'} "
+            f"drive will NOT be recognized by your car's screen.\n\n"
+            f"Would you like to format this drive to {rec_fs} now?"
+        )
+        msg_box.setText(warn_text)
+
+        btn_format = msg_box.addButton(f"⚡ Format Drive to {rec_fs} Now", QMessageBox.AcceptRole)
+        btn_format.setStyleSheet(f"background-color: {theme.CYAN_PRIMARY}; color: black; font-weight: bold; padding: 6px 14px; border-radius: 4px;")
+
+        btn_cancel = msg_box.addButton("Cancel", QMessageBox.RejectRole)
+        btn_cancel.setStyleSheet(f"background-color: {theme.SURFACE_3}; color: {theme.TEXT_PRIMARY}; padding: 6px 14px; border-radius: 4px;")
+
+        msg_box.exec()
+
+        if msg_box.clickedButton() == btn_format:
+            self._format_usb_fat32_interactive(target_fs=rec_fs)
+            return False
+        return False
 
     def _check_usb_ready(self) -> bool:
         if not self.current_usb:
@@ -877,9 +942,32 @@ class AeroSuiteQtApp(QMainWindow):
 
     def _set_card_selected_visual(self, card: QFrame, is_selected: bool):
         if is_selected:
-            card.setStyleSheet(f"QFrame {{ background-color: {theme.CYAN_ALPHA_15}; border: 1px solid {theme.CYAN_PRIMARY}; border-radius: 8px; }}")
+            card.setStyleSheet(f"""
+                QFrame {{
+                    background-color: {theme.CYAN_ALPHA_15};
+                    border: 1px solid {theme.CYAN_PRIMARY};
+                    border-radius: 8px;
+                }}
+                QLabel, QCheckBox, QRadioButton {{
+                    border: none;
+                    background-color: transparent;
+                }}
+            """)
         else:
-            card.setStyleSheet(f"QFrame {{ background-color: {theme.SURFACE_2}; border: 1px solid {theme.BORDER_SLATE}; border-radius: 8px; }} QFrame:hover {{ border: 1px solid {theme.BORDER_CYAN}; }}")
+            card.setStyleSheet(f"""
+                QFrame {{
+                    background-color: {theme.SURFACE_2};
+                    border: 1px solid {theme.BORDER_SLATE};
+                    border-radius: 8px;
+                }}
+                QFrame:hover {{
+                    border: 1px solid {theme.BORDER_CYAN};
+                }}
+                QLabel, QCheckBox, QRadioButton {{
+                    border: none;
+                    background-color: transparent;
+                }}
+            """)
 
     def _build_unified_app_row(self, mode: str, a: dict) -> QFrame:
         fname = a["filename"]
@@ -946,6 +1034,7 @@ class AeroSuiteQtApp(QMainWindow):
             chk_auto.setStyleSheet(f"font-size: 11px; font-weight: normal; color: {theme.TEXT_PRIMARY}; background-color: transparent; border: none;")
             chk_auto.stateChanged.connect(lambda state, fn=fname: self._on_auto_launch_toggle(fn, bool(state)))
             c_layout.addWidget(chk_auto)
+            c_layout.addSpacing(14)
 
             # Force Portrait checkbox
             chk_port = QCheckBox("Force Portrait")
@@ -954,6 +1043,7 @@ class AeroSuiteQtApp(QMainWindow):
             chk_port.setChecked(self.per_app_portrait.get(fname, False))
             chk_port.stateChanged.connect(lambda state, fn=fname: self.per_app_portrait.update({fn: bool(state)}))
             c_layout.addWidget(chk_port)
+            c_layout.addSpacing(14)
 
             # Block Boot Launch checkbox
             chk_boot = QCheckBox("Block Boot Launch")
@@ -962,11 +1052,12 @@ class AeroSuiteQtApp(QMainWindow):
             chk_boot.setChecked(self.per_app_boot.get(fname, False))
             chk_boot.stateChanged.connect(lambda state, fn=fname: self.per_app_boot.update({fn: bool(state)}))
             c_layout.addWidget(chk_boot)
+            c_layout.addSpacing(14)
 
-            # Target Dropdown (User App / System App) - compact height 22px, borderless, transparent
+            # Target Dropdown (User App / System App) - compact height 22px, subtle outline, width 86px
             combo_target = QComboBox()
             combo_target.setObjectName("comboTarget")
-            combo_target.setFixedWidth(100)
+            combo_target.setFixedWidth(86)
             combo_target.setFixedHeight(22)
             combo_target.setCursor(Qt.PointingHandCursor)
             combo_target.addItems(["User App", "System App"])
@@ -975,6 +1066,7 @@ class AeroSuiteQtApp(QMainWindow):
             combo_target.setCurrentIndex(0 if cur_target == "user" else 1)
             combo_target.currentIndexChanged.connect(lambda idx, fn=fname: self.per_app_target.update({fn: "user" if idx == 0 else "system"}))
             c_layout.addWidget(combo_target)
+            c_layout.addSpacing(14)
 
         # App Size label (aligned to far right on all 3 modes)
         lbl_size = QLabel(f"{a.get('size_mb', 0)} MB")
@@ -1183,7 +1275,7 @@ class AeroSuiteQtApp(QMainWindow):
             self.btn_prepare_install.setEnabled(False)
 
     def _execute_prepare_install_usb(self):
-        if not self._check_usb_ready(): return
+        if not self._validate_usb_filesystem(): return
         if self.is_busy: return
 
         selected = [a for a in self.local_apks if self.selected_install_apks.get(a["filename"], False)]
@@ -1376,7 +1468,7 @@ class AeroSuiteQtApp(QMainWindow):
             self.btn_prepare_uninstall.setEnabled(False)
 
     def _execute_prepare_uninstall_usb(self):
-        if not self._check_usb_ready(): return
+        if not self._validate_usb_filesystem(): return
         if self.is_busy: return
 
         selected = [pkg for pkg, state in self.selected_uninstall_pkgs.items() if state]
@@ -1542,7 +1634,7 @@ class AeroSuiteQtApp(QMainWindow):
         self._render_open_app_rows()
 
     def _execute_prepare_open_app_usb(self):
-        if not self._check_usb_ready(): return
+        if not self._validate_usb_filesystem(): return
         if self.is_busy: return
 
         selected_app_info = next((a for a in self.local_apks if a["filename"] == self.selected_open_app_filename), None)
@@ -1611,7 +1703,7 @@ class AeroSuiteQtApp(QMainWindow):
         return view
 
     def _execute_open_settings(self):
-        if not self._check_usb_ready(): return
+        if not self._validate_usb_filesystem(): return
         if self.is_busy: return
 
         letter = self.current_usb.letter
@@ -1645,7 +1737,7 @@ class AeroSuiteQtApp(QMainWindow):
         c_layout.setSpacing(10)
 
         lbl_head = QLabel("🌐 GOOGLE PLAY SERVICES SETUP")
-        lbl_head.setStyleSheet(f"font-size: 15px; font-weight: bold; color: {theme.CYAN_PRIMARY};")
+        lbl_head.setStyleSheet(f"font-size: 15px; font-weight: bold; color: {theme.CYAN_PRIMARY}; border: none; background: transparent;")
         c_layout.addWidget(lbl_head)
 
         lbl_desc = QLabel(
@@ -1655,7 +1747,7 @@ class AeroSuiteQtApp(QMainWindow):
             "• 🛒 Google Play Store: Download, install, and update your favorite applications.\n"
             "• 🗺️ Google Maps & Dependent Apps: Run Google Maps with your account and saved favorites, plus all apps requiring Google Play Services."
         )
-        lbl_desc.setStyleSheet(f"font-size: 12px; color: {theme.TEXT_PRIMARY};")
+        lbl_desc.setStyleSheet(f"font-size: 12px; color: {theme.TEXT_PRIMARY}; border: none; background: transparent;")
         c_layout.addWidget(lbl_desc)
 
         btn_gms = QPushButton("🌐 PREPARE GOOGLE PLAY SERVICES USB")
@@ -1669,7 +1761,7 @@ class AeroSuiteQtApp(QMainWindow):
         return view
 
     def _execute_install_gms(self):
-        if not self._check_usb_ready(): return
+        if not self._validate_usb_filesystem(): return
         if self.is_busy: return
 
         letter = self.current_usb.letter
@@ -1704,7 +1796,7 @@ class AeroSuiteQtApp(QMainWindow):
         c_layout.setSpacing(10)
 
         lbl_head = QLabel("🧹 REMOVE GOOGLE PLAY SERVICES")
-        lbl_head.setStyleSheet(f"font-size: 15px; font-weight: bold; color: {theme.CRIMSON_DANGER};")
+        lbl_head.setStyleSheet(f"font-size: 15px; font-weight: bold; color: {theme.CRIMSON_DANGER}; border: none; background: transparent;")
         c_layout.addWidget(lbl_head)
 
         lbl_desc = QLabel(
@@ -1713,7 +1805,7 @@ class AeroSuiteQtApp(QMainWindow):
             "• 🧹 Account & Trace Cleanup: Cleans account data and residual traces supported for removal.\n"
             "• 🔄 State Restoration: Restores the screen to its closest pre-GMS state, ready for dealership maintenance or fresh customization."
         )
-        lbl_desc.setStyleSheet(f"font-size: 12px; color: {theme.TEXT_PRIMARY};")
+        lbl_desc.setStyleSheet(f"font-size: 12px; color: {theme.TEXT_PRIMARY}; border: none; background: transparent;")
         c_layout.addWidget(lbl_desc)
 
         btn_del = QPushButton("🧹 PREPARE GOOGLE SERVICES REMOVAL USB")
@@ -1727,7 +1819,7 @@ class AeroSuiteQtApp(QMainWindow):
         return view
 
     def _execute_uninstall_gms(self):
-        if not self._check_usb_ready(): return
+        if not self._validate_usb_filesystem(): return
         if self.is_busy: return
 
         letter = self.current_usb.letter
@@ -1783,7 +1875,7 @@ class AeroSuiteQtApp(QMainWindow):
         return view
 
     def _execute_disable_launcher(self):
-        if not self._check_usb_ready(): return
+        if not self._validate_usb_filesystem(): return
         if self.is_busy: return
 
         letter = self.current_usb.letter
@@ -1817,13 +1909,13 @@ class AeroSuiteQtApp(QMainWindow):
         c_layout.setSpacing(10)
 
         lbl_head = QLabel("✅ ENABLE FACTORY LAUNCHER")
-        lbl_head.setStyleSheet(f"font-size: 15px; font-weight: bold; color: {theme.CYAN_PRIMARY};")
+        lbl_head.setStyleSheet(f"font-size: 15px; font-weight: bold; color: {theme.CYAN_PRIMARY}; border: none; background: transparent;")
         c_layout.addWidget(lbl_head)
 
         lbl_desc = QLabel(
             "Unfreezes the stock factory home screen launcher in seconds with one click, restoring the original factory interface to full operation."
         )
-        lbl_desc.setStyleSheet(f"font-size: 12px; color: {theme.TEXT_PRIMARY};")
+        lbl_desc.setStyleSheet(f"font-size: 12px; color: {theme.TEXT_PRIMARY}; border: none; background: transparent;")
         c_layout.addWidget(lbl_desc)
 
         btn_en = QPushButton("✅ PREPARE ENABLE FACTORY LAUNCHER USB")
@@ -1837,7 +1929,7 @@ class AeroSuiteQtApp(QMainWindow):
         return view
 
     def _execute_enable_launcher(self):
-        if not self._check_usb_ready(): return
+        if not self._validate_usb_filesystem(): return
         if self.is_busy: return
 
         letter = self.current_usb.letter
@@ -1868,13 +1960,13 @@ class AeroSuiteQtApp(QMainWindow):
         c_layout.setSpacing(10)
 
         lbl_head = QLabel("🔄 RESTART INFOTAINMENT SCREEN")
-        lbl_head.setStyleSheet(f"font-size: 15px; font-weight: bold; color: {theme.CYAN_PRIMARY};")
+        lbl_head.setStyleSheet(f"font-size: 15px; font-weight: bold; color: {theme.CYAN_PRIMARY}; border: none; background: transparent;")
         c_layout.addWidget(lbl_head)
 
         lbl_desc = QLabel(
             "Performs a quick, safe restart of the infotainment screen without turning off the vehicle engine or disconnecting the car battery."
         )
-        lbl_desc.setStyleSheet(f"font-size: 12px; color: {theme.TEXT_PRIMARY};")
+        lbl_desc.setStyleSheet(f"font-size: 12px; color: {theme.TEXT_PRIMARY}; border: none; background: transparent;")
         c_layout.addWidget(lbl_desc)
 
         btn_rb = QPushButton("🔄 PREPARE REBOOT SCREEN USB")
@@ -1888,7 +1980,7 @@ class AeroSuiteQtApp(QMainWindow):
         return view
 
     def _execute_reboot_screen(self):
-        if not self._check_usb_ready(): return
+        if not self._validate_usb_filesystem(): return
         if self.is_busy: return
 
         letter = self.current_usb.letter
@@ -1962,7 +2054,7 @@ class AeroSuiteQtApp(QMainWindow):
         return view
 
     def _execute_prepare_backup_usb(self):
-        if not self._check_usb_ready(): return
+        if not self._validate_usb_filesystem(): return
         if self.is_busy: return
 
         letter = self.current_usb.letter
@@ -2015,7 +2107,7 @@ class AeroSuiteQtApp(QMainWindow):
         c_layout.setSpacing(10)
 
         lbl_head = QLabel("📥 RESTORE VEHICLE FROM BACKUP")
-        lbl_head.setStyleSheet(f"font-size: 15px; font-weight: bold; color: {theme.CYAN_PRIMARY};")
+        lbl_head.setStyleSheet(f"font-size: 15px; font-weight: bold; color: {theme.CYAN_PRIMARY}; border: none; background: transparent;")
         c_layout.addWidget(lbl_head)
 
         lbl_desc = QLabel(
@@ -2025,7 +2117,7 @@ class AeroSuiteQtApp(QMainWindow):
             "• 📶 Connectivity: Restores saved Wi-Fi networks and paired Bluetooth devices.\n"
             "• ⚡ Smart Delta Restore: Skips already installed packages to maximize speed and minimize downtime."
         )
-        lbl_desc.setStyleSheet(f"font-size: 12px; color: {theme.TEXT_PRIMARY};")
+        lbl_desc.setStyleSheet(f"font-size: 12px; color: {theme.TEXT_PRIMARY}; border: none; background: transparent;")
         c_layout.addWidget(lbl_desc)
 
         self.restore_combo = QComboBox()
@@ -2057,7 +2149,7 @@ class AeroSuiteQtApp(QMainWindow):
             self.restore_combo.setEnabled(True)
 
     def _execute_restore(self):
-        if not self._check_usb_ready(): return
+        if not self._validate_usb_filesystem(): return
         if self.is_busy: return
 
         backup_path = self.restore_combo.currentData()
@@ -2094,7 +2186,7 @@ class AeroSuiteQtApp(QMainWindow):
         c_layout.setSpacing(10)
 
         lbl_head = QLabel("⚠️ ZERO-TRACE FACTORY RESET")
-        lbl_head.setStyleSheet(f"font-size: 15px; font-weight: bold; color: {theme.CRIMSON_DANGER};")
+        lbl_head.setStyleSheet(f"font-size: 15px; font-weight: bold; color: {theme.CRIMSON_DANGER}; border: none; background: transparent;")
         c_layout.addWidget(lbl_head)
 
         lbl_desc = QLabel(
@@ -2103,7 +2195,7 @@ class AeroSuiteQtApp(QMainWindow):
             "• 🧹 Revert to Original State: Purges third-party applications, Google services, custom accounts, and residual data.\n"
             "• 🏁 Pre-Dealership Readiness: Completely restores the head unit to stock dealership condition before routine vehicle inspection."
         )
-        lbl_desc.setStyleSheet(f"font-size: 12px; color: {theme.TEXT_PRIMARY};")
+        lbl_desc.setStyleSheet(f"font-size: 12px; color: {theme.TEXT_PRIMARY}; border: none; background: transparent;")
         c_layout.addWidget(lbl_desc)
 
         btn_reset = QPushButton("⚠️ PREPARE ZERO-TRACE FACTORY RESET USB")
@@ -2117,7 +2209,7 @@ class AeroSuiteQtApp(QMainWindow):
         return view
 
     def _execute_factory_reset(self):
-        if not self._check_usb_ready(): return
+        if not self._validate_usb_filesystem(): return
         if self.is_busy: return
 
         letter = self.current_usb.letter
@@ -2153,7 +2245,7 @@ class AeroSuiteQtApp(QMainWindow):
         c_layout.setSpacing(10)
 
         lbl_head = QLabel("📋 FETCH DIAGNOSTIC LOGS")
-        lbl_head.setStyleSheet(f"font-size: 15px; font-weight: bold; color: {theme.CYAN_PRIMARY};")
+        lbl_head.setStyleSheet(f"font-size: 15px; font-weight: bold; color: {theme.CYAN_PRIMARY}; border: none; background: transparent;")
         c_layout.addWidget(lbl_head)
 
         lbl_desc = QLabel(
@@ -2162,7 +2254,7 @@ class AeroSuiteQtApp(QMainWindow):
             "• ⚠️ Error Analysis: Captures crash tombstones, ANR traces, and system error events.\n"
             "• 👨‍💻 Developer Sharing: Packages diagnostic reports for developers to pinpoint exact root causes and provide targeted solutions."
         )
-        lbl_desc.setStyleSheet(f"font-size: 12px; color: {theme.TEXT_PRIMARY};")
+        lbl_desc.setStyleSheet(f"font-size: 12px; color: {theme.TEXT_PRIMARY}; border: none; background: transparent;")
         c_layout.addWidget(lbl_desc)
 
         btn_logs = QPushButton("📋 PREPARE FETCH LOGS USB")
@@ -2176,7 +2268,7 @@ class AeroSuiteQtApp(QMainWindow):
         return view
 
     def _execute_fetch_logs(self):
-        if not self._check_usb_ready(): return
+        if not self._validate_usb_filesystem(): return
         if self.is_busy: return
 
         letter = self.current_usb.letter
