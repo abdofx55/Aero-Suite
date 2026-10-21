@@ -173,16 +173,27 @@ def get_application_stylesheet() -> str:
         color: {theme.TEXT_PRIMARY};
         border: 1px solid {theme.BORDER_SLATE};
         border-radius: 6px;
-        padding: 5px 10px;
-        font-size: 12px;
-        min-height: 24px;
+        padding: 4px 24px 4px 10px;
+        font-size: 11px;
+        font-weight: 600;
+        min-height: 26px;
     }}
     QComboBox:hover {{
         border-color: {theme.CYAN_PRIMARY};
     }}
     QComboBox::drop-down {{
+        subcontrol-origin: padding;
+        subcontrol-position: top right;
+        width: 22px;
         border: none;
-        width: 24px;
+    }}
+    QComboBox::down-arrow {{
+        image: url("assets/arrow_down.png");
+        width: 10px;
+        height: 10px;
+    }}
+    QComboBox::down-arrow:hover {{
+        image: url("assets/arrow_down_cyan.png");
     }}
     QComboBox QAbstractItemView {{
         background-color: {theme.SURFACE_2};
@@ -199,7 +210,7 @@ def get_application_stylesheet() -> str:
         color: {theme.TEXT_PRIMARY};
         border: 1px solid {theme.BORDER_SLATE};
         border-radius: 8px;
-        padding: 4px 12px;
+        padding: 4px 24px 4px 12px;
         font-size: 11px;
         font-weight: bold;
         min-height: 32px;
@@ -213,6 +224,14 @@ def get_application_stylesheet() -> str:
         subcontrol-position: top right;
         width: 24px;
         border: none;
+    }}
+    QComboBox#usbCombo::down-arrow {{
+        image: url("assets/arrow_down.png");
+        width: 10px;
+        height: 10px;
+    }}
+    QComboBox#usbCombo::down-arrow:hover {{
+        image: url("assets/arrow_down_cyan.png");
     }}
     QComboBox#usbCombo QAbstractItemView {{
         background-color: {theme.SURFACE_2};
@@ -284,15 +303,21 @@ def get_application_stylesheet() -> str:
         margin: 4px 8px;
     }}
 
+    /* Labels */
+    QLabel {{
+        background-color: transparent;
+    }}
+
     /* CheckBoxes */
     QCheckBox {{
         color: {theme.TEXT_PRIMARY};
         spacing: 8px;
         font-size: 12px;
+        background-color: transparent;
     }}
     QCheckBox::indicator {{
-        width: 18px;
-        height: 18px;
+        width: 16px;
+        height: 16px;
         border-radius: 4px;
         border: 1px solid {theme.BORDER_SLATE};
         background-color: {theme.SURFACE_1};
@@ -303,7 +328,7 @@ def get_application_stylesheet() -> str:
     QCheckBox::indicator:checked {{
         background-color: {theme.CYAN_PRIMARY};
         border-color: {theme.CYAN_PRIMARY};
-        image: url("none"); /* Clean checkmark painted or standard */
+        image: url("assets/checkbox_check.png");
     }}
 
     /* Radio Buttons */
@@ -311,11 +336,12 @@ def get_application_stylesheet() -> str:
         color: {theme.TEXT_PRIMARY};
         spacing: 8px;
         font-size: 12px;
+        background-color: transparent;
     }}
     QRadioButton::indicator {{
-        width: 18px;
-        height: 18px;
-        border-radius: 9px;
+        width: 16px;
+        height: 16px;
+        border-radius: 8px;
         border: 1px solid {theme.BORDER_SLATE};
         background-color: {theme.SURFACE_1};
     }}
@@ -325,6 +351,24 @@ def get_application_stylesheet() -> str:
     QRadioButton::indicator:checked {{
         background-color: {theme.CYAN_PRIMARY};
         border: 3px solid {theme.SURFACE_1};
+    }}
+
+    /* Operation Cancel Button */
+    QPushButton#btnCancelOp {{
+        background-color: {theme.CRIMSON_DANGER};
+        color: #FFFFFF;
+        border: none;
+        font-size: 11px;
+        font-weight: bold;
+        padding: 4px 12px;
+        border-radius: 6px;
+        min-height: 24px;
+    }}
+    QPushButton#btnCancelOp:hover {{
+        background-color: {theme.CRIMSON_HOVER};
+    }}
+    QPushButton#btnCancelOp:pressed {{
+        background-color: #B91C1C;
     }}
 
     /* Scroll Areas & Scrollbars */

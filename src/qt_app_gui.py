@@ -84,7 +84,10 @@ class PayloadWorker(QThread):
                     pct_val = float(pct)
                     val = int(pct_val * 100) if pct_val <= 1.0 else int(pct_val)
                     val = max(0, min(100, val))
-                    self.progress_signal.emit(val, str(text))
+                    status_text = str(text)
+                    if len(a) >= 3 and isinstance(a[1], (int, float)) and isinstance(a[2], (int, float)) and a[2] > 0:
+                        status_text = f"Transferring {text} ({a[1]:.1f}/{a[2]:.1f} MB)"
+                    self.progress_signal.emit(val, status_text)
                 except Exception:
                     pass
 
@@ -94,18 +97,24 @@ class PayloadWorker(QThread):
             import inspect
             sig = inspect.signature(self.target_func)
             accepted = sig.parameters
+            has_var_kw = any(p.kind == inspect.Parameter.VAR_KEYWORD for p in accepted.values())
             call_kwargs = dict(self.kwargs)
-            if "log_func" in accepted:
+            if "log_func" in accepted or has_var_kw:
                 call_kwargs["log_func"] = _log
-            if "progress_func" in accepted:
+            if "progress_func" in accepted or has_var_kw:
                 call_kwargs["progress_func"] = _progress
-            if "progress_callback" in accepted:
-                call_kwargs["progress_callback"] = lambda pct, cur_f="", spd=0.0, c_mb=0.0, t_mb=0.0: _progress(pct, f"Syncing {cur_f} ({c_mb:.1f}/{t_mb:.1f} MB)" if cur_f else "Syncing...")
-            if "cancel_check" in accepted:
+            if "progress_callback" in accepted or has_var_kw:
+                call_kwargs["progress_callback"] = lambda pct, cur_f="", spd=0.0, c_mb=0.0, t_mb=0.0, *a, **k: _progress(pct, f"Syncing {cur_f} ({c_mb:.1f}/{t_mb:.1f} MB)" if cur_f else "Syncing...")
+            if "cancel_check" in accepted or has_var_kw:
                 call_kwargs["cancel_check"] = _cancel_check
 
             ok = self.target_func(*self.args, **call_kwargs)
-            self.finished_signal.emit(bool(ok), "")
+            if self.cancel_event.is_set():
+                self.finished_signal.emit(False, "cancelled")
+            elif not ok:
+                self.finished_signal.emit(False, "aborted")
+            else:
+                self.finished_signal.emit(True, "")
         except Exception as e:
             self.log_signal.emit(f"Operation Exception: {e}", "danger")
             self.finished_signal.emit(False, str(e))
@@ -387,27 +396,32 @@ class AeroSuiteQtApp(QMainWindow):
         # Bottom Terminal & Progress Box
         bottom_box = QFrame()
         bottom_box.setProperty("class", "card")
-        bottom_box.setFixedHeight(175)
+        bottom_box.setFixedHeight(195)
         bottom_layout = QVBoxLayout(bottom_box)
-        bottom_layout.setContentsMargins(16, 8, 16, 8)
-        bottom_layout.setSpacing(6)
+        bottom_layout.setContentsMargins(16, 10, 16, 10)
+        bottom_layout.setSpacing(8)
 
         # Progress bar strip & Controls
         prog_bar = QHBoxLayout()
+        prog_bar.setContentsMargins(0, 0, 0, 0)
+        prog_bar.setSpacing(10)
+
         self.lbl_status = QLabel("System Idle — Ready for operation.")
         self.lbl_status.setStyleSheet(f"font-size: 11px; color: {theme.TEXT_MUTED};")
         prog_bar.addWidget(self.lbl_status)
         prog_bar.addStretch()
 
         self.btn_cancel_op = QPushButton("⏹ CANCEL")
-        self.btn_cancel_op.setProperty("class", "btnDanger")
-        self.btn_cancel_op.setFixedHeight(24)
+        self.btn_cancel_op.setObjectName("btnCancelOp")
+        self.btn_cancel_op.setCursor(Qt.PointingHandCursor)
+        self.btn_cancel_op.setFixedHeight(28)
         self.btn_cancel_op.setVisible(False)
         self.btn_cancel_op.clicked.connect(self.cancel_current_operation)
         prog_bar.addWidget(self.btn_cancel_op)
 
         self.progress_bar = QProgressBar()
         self.progress_bar.setFixedWidth(260)
+        self.progress_bar.setFixedHeight(20)
         self.progress_bar.setValue(0)
         prog_bar.addWidget(self.progress_bar)
         bottom_layout.addLayout(prog_bar)
@@ -731,10 +745,12 @@ class AeroSuiteQtApp(QMainWindow):
                 self.log_terminal("Operation completed successfully!", "mint")
                 if success_title:
                     self.show_success_dialog(success_title, success_msg)
+            elif self.cancel_event.is_set() or "cancel" in str(err).lower():
+                self.log_terminal("⚠ Operation cancelled safely by user.", "warn")
             else:
-                self.log_terminal(f"Operation failed or cancelled: {err}", "danger")
+                self.log_terminal(f"✗ Operation failed: {err or 'Action aborted'}", "danger")
                 if error_title:
-                    self.show_error_dialog(error_title, error_msg or f"Error: {err}")
+                    self.show_error_dialog(error_title, error_msg or f"Operation Failed:\n{err or 'Action aborted'}")
 
         worker.finished_signal.connect(_on_finished)
         worker.start()
@@ -816,13 +832,13 @@ class AeroSuiteQtApp(QMainWindow):
         lbl_target.setStyleSheet(f"font-size: 11px; color: {theme.TEXT_MUTED};")
         part_bar.addWidget(lbl_target)
 
-        btn_all_user = QPushButton("Set All to User (/data/app)")
-        btn_all_user.setStyleSheet("font-size: 11px; padding: 4px 8px;")
+        btn_all_user = QPushButton("Set All: User App")
+        btn_all_user.setStyleSheet("font-size: 11px; padding: 4px 10px;")
         btn_all_user.clicked.connect(lambda: self._set_global_target("user"))
         part_bar.addWidget(btn_all_user)
 
-        btn_all_sys = QPushButton("Set All to System (/system/app)")
-        btn_all_sys.setStyleSheet("font-size: 11px; padding: 4px 8px;")
+        btn_all_sys = QPushButton("Set All: System App")
+        btn_all_sys.setStyleSheet("font-size: 11px; padding: 4px 10px;")
         btn_all_sys.clicked.connect(lambda: self._set_global_target("system"))
         part_bar.addWidget(btn_all_sys)
 
@@ -835,7 +851,7 @@ class AeroSuiteQtApp(QMainWindow):
         self.install_cards_container = QWidget()
         self.install_cards_layout = QVBoxLayout(self.install_cards_container)
         self.install_cards_layout.setContentsMargins(0, 0, 0, 0)
-        self.install_cards_layout.setSpacing(6)
+        self.install_cards_layout.setSpacing(5)
         self.install_scroll.setWidget(self.install_cards_container)
         layout.addWidget(self.install_scroll)
 
@@ -874,60 +890,71 @@ class AeroSuiteQtApp(QMainWindow):
 
         for a in matching:
             fname = a["filename"]
+            is_cur_selected = self.selected_install_apks.get(fname, False)
+
             card = QFrame()
             card.setProperty("class", "card")
-            c_layout = QVBoxLayout(card)
-            c_layout.setContentsMargins(12, 8, 12, 8)
-            c_layout.setSpacing(6)
+            card.setFixedHeight(40)
 
-            # Top Row: Checkbox + Meta + Target
-            top_row = QHBoxLayout()
-            chk_install = QCheckBox(f"{a['display_name']}")
-            chk_install.setStyleSheet(f"font-weight: bold; font-size: 13px; color: {theme.TEXT_PRIMARY};")
-            chk_install.setChecked(self.selected_install_apks.get(fname, False))
+            c_layout = QHBoxLayout(card)
+            c_layout.setContentsMargins(12, 4, 12, 4)
+            c_layout.setSpacing(12)
+
+            # 1. Main Checkbox: App Name (Package name removed as requested!)
+            chk_install = QCheckBox(a["display_name"])
+            chk_install.setStyleSheet(f"font-weight: bold; font-size: 12px; color: {theme.CYAN_PRIMARY if is_cur_selected else theme.TEXT_PRIMARY};")
+            chk_install.setChecked(is_cur_selected)
             chk_install.stateChanged.connect(lambda state, fn=fname: self._on_install_chk_changed(fn, bool(state)))
-            top_row.addWidget(chk_install)
+            c_layout.addWidget(chk_install)
 
-            lbl_meta = QLabel(f"({a['package']}) • {a['size_mb']} MB")
-            lbl_meta.setStyleSheet(f"font-size: 11px; color: {theme.TEXT_MUTED};")
-            top_row.addWidget(lbl_meta)
-            top_row.addStretch()
+            # 2. Size Label
+            lbl_size = QLabel(f"{a['size_mb']} MB")
+            lbl_size.setStyleSheet(f"font-size: 10px; font-family: Consolas, monospace; font-weight: bold; color: {theme.TEXT_MUTED};")
+            c_layout.addWidget(lbl_size)
 
-            combo_target = QComboBox()
-            combo_target.addItems(["User (/data)", "System (/system)"])
-            combo_target.setCurrentIndex(0 if self.per_app_target.get(fname, "user") == "user" else 1)
-            combo_target.currentIndexChanged.connect(lambda idx, fn=fname: self.per_app_target.update({fn: "user" if idx == 0 else "system"}))
-            top_row.addWidget(combo_target)
-            c_layout.addLayout(top_row)
+            c_layout.addStretch()
 
-            # Bottom Row: 3 Feature Toggles (UNIFIED BEHAVIOR - Unchecked by default, never forces install selection)
-            bot_row = QHBoxLayout()
+            # 3. Auto Launch Checkbox (First after text as requested!)
+            chk_auto = QCheckBox("Auto Launch")
+            is_auto = (self.auto_launch_app_filename == fname)
+            chk_auto.setChecked(is_auto)
+            chk_auto.setStyleSheet(f"font-size: 11px; font-weight: {'bold' if is_auto else 'normal'}; color: {theme.MINT_SUCCESS if is_auto else theme.TEXT_PRIMARY};")
+            chk_auto.stateChanged.connect(lambda state, fn=fname: self._on_auto_launch_toggle(fn, bool(state)))
+            c_layout.addWidget(chk_auto)
+
+            # 4. Force Portrait Checkbox
             chk_port = QCheckBox("Force Portrait")
             chk_port.setStyleSheet(f"font-size: 11px; color: {theme.TEXT_PRIMARY};")
             chk_port.setChecked(self.per_app_portrait.get(fname, False))
             chk_port.stateChanged.connect(lambda state, fn=fname: self.per_app_portrait.update({fn: bool(state)}))
-            bot_row.addWidget(chk_port)
-            bot_row.addSpacing(16)
+            c_layout.addWidget(chk_port)
 
+            # 5. Block Boot Launch Checkbox
             chk_boot = QCheckBox("Block Boot Launch")
             chk_boot.setStyleSheet(f"font-size: 11px; color: {theme.TEXT_PRIMARY};")
             chk_boot.setChecked(self.per_app_boot.get(fname, False))
             chk_boot.stateChanged.connect(lambda state, fn=fname: self.per_app_boot.update({fn: bool(state)}))
-            bot_row.addWidget(chk_boot)
-            bot_row.addSpacing(16)
+            c_layout.addWidget(chk_boot)
 
-            chk_auto = QCheckBox("Auto Launch")
-            is_auto = (self.auto_launch_app_filename == fname)
-            chk_auto.setStyleSheet(f"font-size: 11px; font-weight: {'bold' if is_auto else 'normal'}; color: {theme.MINT_SUCCESS if is_auto else theme.TEXT_PRIMARY};")
-            chk_auto.setChecked(is_auto)
-            chk_auto.stateChanged.connect(lambda state, fn=fname: self._on_auto_launch_toggle(fn, bool(state)))
-            bot_row.addWidget(chk_auto)
-            bot_row.addStretch()
-            c_layout.addLayout(bot_row)
+            # 6. Target Dropdown: Clear User App / System App selection with down arrow!
+            combo_target = QComboBox()
+            combo_target.setFixedWidth(120)
+            combo_target.setFixedHeight(28)
+            combo_target.setCursor(Qt.PointingHandCursor)
+            combo_target.addItems(["User App", "System App"])
+            combo_target.setToolTip("Target partition: User App (/data/app) vs System App (/system/app)")
+            cur_target = self.per_app_target.get(fname, "user")
+            combo_target.setCurrentIndex(0 if cur_target == "user" else 1)
+            combo_target.currentIndexChanged.connect(lambda idx, fn=fname: self.per_app_target.update({fn: "user" if idx == 0 else "system"}))
+            c_layout.addWidget(combo_target)
 
             self.install_cards_map[fname] = {
+                "card": card,
                 "chk_install": chk_install,
                 "chk_auto": chk_auto,
+                "chk_port": chk_port,
+                "chk_boot": chk_boot,
+                "combo_target": combo_target,
             }
             self.install_cards_layout.addWidget(card)
 
@@ -935,6 +962,10 @@ class AeroSuiteQtApp(QMainWindow):
 
     def _on_install_chk_changed(self, fname: str, is_checked: bool):
         self.selected_install_apks[fname] = is_checked
+        if fname in self.install_cards_map:
+            chk_i = self.install_cards_map[fname]["chk_install"]
+            chk_i.setStyleSheet(f"font-weight: bold; font-size: 12px; color: {theme.CYAN_PRIMARY if is_checked else theme.TEXT_PRIMARY};")
+
         # If user unselects an app that had auto launch, clear auto launch
         if not is_checked and self.auto_launch_app_filename == fname:
             self.auto_launch_app_filename = None
@@ -1019,7 +1050,12 @@ class AeroSuiteQtApp(QMainWindow):
     def _set_global_target(self, target: str):
         for a in self.local_apks:
             self.per_app_target[a["filename"]] = target
-        self._render_install_cards()
+        for fn, item in self.install_cards_map.items():
+            if "combo_target" in item:
+                cb = item["combo_target"]
+                cb.blockSignals(True)
+                cb.setCurrentIndex(0 if target == "user" else 1)
+                cb.blockSignals(False)
 
     def _filter_install_apks(self, text: str):
         self.install_search_query = text
