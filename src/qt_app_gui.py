@@ -8,13 +8,13 @@ import sys
 import threading
 import time
 
-from PySide6.QtCore import Qt, QThread, Signal, Slot, QObject, QTimer
-from PySide6.QtGui import QIcon, QFont, QColor, QTextCursor
+from PySide6.QtCore import Qt, QThread, Signal, Slot, QObject, QTimer, QPoint
+from PySide6.QtGui import QIcon, QFont, QColor, QTextCursor, QAction, QCursor
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QGridLayout, QStackedWidget, QLabel, QPushButton, QLineEdit,
     QCheckBox, QComboBox, QProgressBar, QPlainTextEdit, QScrollArea,
-    QFrame, QMessageBox, QSizePolicy, QSplitter
+    QFrame, QMessageBox, QSizePolicy, QSplitter, QMenu
 )
 
 import theme
@@ -208,22 +208,42 @@ class AeroSuiteQtApp(QMainWindow):
 
         header_layout.addStretch()
 
-        # Right: USB status dot + Interactive dropdown + Refresh
+        # Right: USB status dot + Interactive dropdown + Refresh + Tools
         usb_box = QHBoxLayout()
+        usb_box.setSpacing(8)
+
         self.usb_status_dot = QLabel("●")
+        self.usb_status_dot.setObjectName("usbStatusDot")
         self.usb_status_dot.setStyleSheet(f"color: {theme.CRIMSON_DANGER}; font-size: 16px;")
+        self.usb_status_dot.setToolTip("No USB Flash Drive Detected")
         usb_box.addWidget(self.usb_status_dot)
 
         self.usb_combo = QComboBox()
+        self.usb_combo.setObjectName("usbCombo")
         self.usb_combo.setFixedWidth(300)
+        self.usb_combo.setFixedHeight(34)
+        self.usb_combo.setCursor(Qt.PointingHandCursor)
+        self.usb_combo.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.usb_combo.customContextMenuRequested.connect(self._show_usb_menu)
         self.usb_combo.currentIndexChanged.connect(self._on_usb_selected)
         usb_box.addWidget(self.usb_combo)
 
-        btn_refresh_usb = QPushButton("🔄 Refresh")
-        btn_refresh_usb.setFixedHeight(28)
-        btn_refresh_usb.setStyleSheet("font-size: 11px; font-weight: bold; padding: 4px 10px;")
-        btn_refresh_usb.clicked.connect(self._refresh_usb_drives)
-        usb_box.addWidget(btn_refresh_usb)
+        self.btn_refresh_usb = QPushButton("🔄 Refresh")
+        self.btn_refresh_usb.setObjectName("btnRefreshUsb")
+        self.btn_refresh_usb.setFixedHeight(34)
+        self.btn_refresh_usb.setCursor(Qt.PointingHandCursor)
+        self.btn_refresh_usb.setToolTip("Refresh & Rescan USB Flash Drives")
+        self.btn_refresh_usb.clicked.connect(self._refresh_usb_drives)
+        usb_box.addWidget(self.btn_refresh_usb)
+
+        self.btn_usb_settings = QPushButton("⚙️")
+        self.btn_usb_settings.setObjectName("btnUsbSettings")
+        self.btn_usb_settings.setFixedSize(34, 34)
+        self.btn_usb_settings.setCursor(Qt.PointingHandCursor)
+        self.btn_usb_settings.setToolTip("Flash Drive Settings & Tools (Open in Explorer, Clean Drive, Properties)")
+        self.btn_usb_settings.clicked.connect(lambda: self._show_usb_menu(button_anchor=True))
+        usb_box.addWidget(self.btn_usb_settings)
+
         header_layout.addLayout(usb_box)
 
         main_layout.addWidget(header)
@@ -474,6 +494,13 @@ class AeroSuiteQtApp(QMainWindow):
     def _refresh_usb_drives(self):
         drives = get_removable_drives()
         self._on_usb_drives_changed(drives)
+        if hasattr(self, "btn_refresh_usb"):
+            self.btn_refresh_usb.setText("✓ Refreshed!")
+            self.btn_refresh_usb.setStyleSheet("color: #10B981;")
+            QTimer.singleShot(1200, lambda: (
+                self.btn_refresh_usb.setText("🔄 Refresh"),
+                self.btn_refresh_usb.setStyleSheet("")
+            ))
 
     @Slot(list)
     def _on_usb_drives_changed(self, drives: list):
@@ -484,29 +511,154 @@ class AeroSuiteQtApp(QMainWindow):
         if not drives:
             self.current_usb = None
             self.usb_combo.addItem("NO USB FLASH DETECTED")
+            self.usb_combo.setToolTip("Please insert a removable USB flash drive to prepare payloads.")
             self.usb_status_dot.setStyleSheet(f"color: {theme.CRIMSON_DANGER}; font-size: 16px;")
+            self.usb_status_dot.setToolTip("No USB Flash Drive Detected")
         else:
             prev_letter = self.current_usb.letter if self.current_usb else None
             matched_idx = 0
             for i, d in enumerate(drives):
                 item_text = f"{d.drive_letter_only}:\\ [{d.label or 'USB'}] ({d.free_gb:.1f} GB free)"
+                if getattr(d, "is_restore_ready", False):
+                    item_text += " 🔄 RESTORE"
+                elif d.has_backup:
+                    item_text += " ★ BACKUP"
                 self.usb_combo.addItem(item_text, userData=d)
                 if prev_letter and d.letter == prev_letter:
                     matched_idx = i
 
             self.usb_combo.setCurrentIndex(matched_idx)
             self.current_usb = drives[matched_idx]
-            self.usb_status_dot.setStyleSheet(f"color: {theme.MINT_SUCCESS}; font-size: 16px;")
+            self._update_usb_status_ui()
+
+            # Warn user if multiple removable drives are detected
+            if len(drives) > 1 and getattr(self, "_last_warned_drive_count", 0) != len(drives):
+                self._last_warned_drive_count = len(drives)
+                self.log_terminal(f"⚠️ Multiple removable drives detected ({len(drives)} drives)! Please verify the target USB drive selected in the dropdown.", "warn")
+            elif len(drives) == 1:
+                self._last_warned_drive_count = 1
+
+            # Auto-prompt if backup found
+            if self.current_usb and self.current_usb.has_backup:
+                if getattr(self, "_last_logged_backup_drive", None) != self.current_usb.letter:
+                    self._last_logged_backup_drive = self.current_usb.letter
+                    self.log_terminal(f"Car backup detected on {self.current_usb.letter} (Date: {self.current_usb.backup_date}). Ready for PC Vault Sync.", "mint")
+            else:
+                self._last_logged_backup_drive = None
 
         self.usb_combo.blockSignals(False)
+
+    def _update_usb_status_ui(self):
+        if not self.current_usb:
+            self.usb_status_dot.setStyleSheet(f"color: {theme.CRIMSON_DANGER}; font-size: 16px;")
+            self.usb_status_dot.setToolTip("No USB Flash Drive Detected")
+            self.usb_combo.setToolTip("Please insert a USB flash drive to prepare payloads.")
+            return
+
+        d = self.current_usb
+        self.usb_status_dot.setStyleSheet(f"color: {theme.MINT_SUCCESS}; font-size: 16px;")
+        self.usb_status_dot.setToolTip(f"USB Connected: {d.letter} [{d.label or 'Removable Disk'}]")
+        tip = (
+            f"💾 Removable USB Flash Drive\n"
+            f"───────────────────────────────\n"
+            f"• Target Drive: {d.letter}\n"
+            f"• Volume Label: {d.label or 'Removable Disk'}\n"
+            f"• File System: {d.fs_name} ({'Optimal for Dongfeng IVI' if d.fs_name.upper() == 'FAT32' else 'Recommended: FAT32'})\n"
+            f"• Free Space: {d.free_gb:.1f} GB / {d.total_gb:.1f} GB Total\n"
+            f"• Used Space: {d.used_gb:.1f} GB\n"
+            f"• Status: Connected & Monitored\n"
+            f"───────────────────────────────\n"
+            f"💡 Click ⚙️ or Right-Click for Settings & Tools"
+        )
+        self.usb_combo.setToolTip(tip)
 
     def _on_usb_selected(self, index: int):
         drive = self.usb_combo.currentData()
         if drive and isinstance(drive, UsbDriveInfo):
             self.current_usb = drive
-            self.usb_status_dot.setStyleSheet(f"color: {theme.MINT_SUCCESS}; font-size: 16px;")
+            self._update_usb_status_ui()
+            self.log_terminal(f"Target USB Drive switched to: {drive.letter} [{drive.label}] ({drive.free_gb:.1f} GB free)", "mint")
 
     _on_user_selected_drive = _on_usb_selected
+
+    def _show_usb_menu(self, pos=None, button_anchor=False):
+        if not self.current_usb:
+            self.show_error_dialog("No USB Drive", "Please insert a removable USB flash drive to access tools.")
+            return
+
+        menu = QMenu(self)
+        menu.setObjectName("usbToolsMenu")
+
+        d = self.current_usb
+        title_action = menu.addAction(f"💾 USB Drive: {d.letter} [{d.label or 'Removable Disk'}]")
+        title_action.setEnabled(False)
+        menu.addSeparator()
+
+        act_open = menu.addAction("📂 Open in Windows Explorer")
+        act_open.triggered.connect(self._open_usb_in_explorer)
+
+        act_info = menu.addAction("ℹ️ View Drive Properties & Info")
+        act_info.triggered.connect(self._show_usb_drive_info_dialog)
+
+        act_clean = menu.addAction("🧹 Clean Old Payload Files from USB")
+        act_clean.triggered.connect(self._clean_current_usb_drive)
+
+        menu.addSeparator()
+        act_rescan = menu.addAction("🔄 Rescan Removable Drives")
+        act_rescan.triggered.connect(self._refresh_usb_drives)
+
+        if button_anchor and hasattr(self, "btn_usb_settings"):
+            btn_pos = self.btn_usb_settings.mapToGlobal(QPoint(0, self.btn_usb_settings.height() + 4))
+            menu.exec(btn_pos)
+        elif pos is not None and isinstance(pos, QPoint):
+            global_pos = self.usb_combo.mapToGlobal(pos)
+            menu.exec(global_pos)
+        else:
+            menu.exec(QCursor.pos())
+
+    def _open_usb_in_explorer(self):
+        if not self._check_usb_ready(): return
+        try:
+            os.startfile(self.current_usb.letter)
+            self.log_terminal(f"Opened target USB {self.current_usb.letter} in Windows Explorer.", "mint")
+        except Exception as e:
+            self.show_error_dialog("Error", f"Failed to open USB drive: {e}")
+
+    def _clean_current_usb_drive(self):
+        if not self._check_usb_ready(): return
+        letter = self.current_usb.letter
+        if not self.show_confirm_dialog(
+            "Clean USB Drive",
+            f"Are you sure you want to clean target USB drive {letter}?\n\n"
+            f"This will remove previous update payloads ('update/' folder and 'custom_rep.sh') while preserving your other files.",
+            confirm_text="🧹 Clean Drive",
+            is_danger=True
+        ):
+            return
+
+        self.execute_payload_worker(
+            payload_engine.clean_usb_drive,
+            letter,
+            success_title="Drive Cleaned",
+            success_msg=f"Successfully cleaned update payloads from drive {letter}!",
+            error_title="Clean Failed"
+        )
+
+    def _show_usb_drive_info_dialog(self):
+        if not self._check_usb_ready(): return
+        d = self.current_usb
+        info_text = (
+            f"Target USB Drive Specifications:\n\n"
+            f"• Drive Letter: {d.letter}\n"
+            f"• Volume Label: {d.label or 'Removable Disk'}\n"
+            f"• File System: {d.fs_name} ({'Optimal for Dongfeng IVI' if d.fs_name.upper() == 'FAT32' else 'Note: FAT32 recommended for car updates'})\n"
+            f"• Free Space: {d.free_gb:.2f} GB\n"
+            f"• Used Space: {d.used_gb:.2f} GB\n"
+            f"• Total Capacity: {d.total_gb:.2f} GB\n"
+            f"• Car Backup: {'Detected on Drive (' + d.backup_date + ')' if d.has_backup else 'None'}\n"
+            f"• Restore Payload: {'Prepared & Ready' if getattr(d, 'is_restore_ready', False) else 'None'}"
+        )
+        self.show_info_dialog("USB Flash Drive Information", info_text)
 
     def _check_usb_ready(self) -> bool:
         if not self.current_usb:
