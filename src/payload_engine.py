@@ -253,7 +253,7 @@ def prepare_install_apps_usb(usb_drive: str, selected_apks: list, options: dict 
         if log_func:
             log_func(msg)
 
-    _log(f"\n── [1/9] Preparing Install Apps USB: {usb_drive} ──")
+    _log(f"\n── [1/13] Preparing Install Apps USB: {usb_drive} ──")
     if not os.path.exists(usb_drive):
         _log(f"  ✗ USB Drive not found: {usb_drive}")
         return False
@@ -577,7 +577,7 @@ def prepare_uninstall_apps_usb(usb_drive: str, selected_packages: list, allowed_
         if log_func:
             log_func(msg)
 
-    _log(f"\n── [2/9] Preparing Safe Uninstall Apps USB: {usb_drive} ──")
+    _log(f"\n── [2/13] Preparing Safe Uninstall Apps USB: {usb_drive} ──")
     if not os.path.exists(usb_drive):
         _log(f"  ✗ USB Drive not found: {usb_drive}")
         return False
@@ -725,7 +725,7 @@ The uninstallation engine executes a deep dual-sweep removal while maintaining a
 
 
 # ===========================================================================
-# 3. INSTALL GMS PAYLOAD
+# 5. INSTALL GMS PAYLOAD
 # ===========================================================================
 def prepare_install_gms_usb(usb_drive: str, gms_dir: str, log_func=None, progress_func=None, cancel_check=None) -> bool:
     """Prepares USB to inject Google Services Framework (GMS) into Dongfeng head unit."""
@@ -733,7 +733,7 @@ def prepare_install_gms_usb(usb_drive: str, gms_dir: str, log_func=None, progres
         if log_func:
             log_func(msg)
 
-    _log(f"\n── [3/9] Preparing Install GMS USB: {usb_drive} ──")
+    _log(f"\n── [5/13] Preparing Install GMS USB: {usb_drive} ──")
     if not os.path.exists(usb_drive):
         _log(f"  ✗ USB Drive not found: {usb_drive}")
         return False
@@ -938,7 +938,7 @@ Note: The APK versions included here are specifically calibrated for Dongfeng Sh
 
 
 # ===========================================================================
-# 4. UNINSTALL GMS PAYLOAD
+# 6. UNINSTALL GMS PAYLOAD
 # ===========================================================================
 def prepare_uninstall_gms_usb(usb_drive: str, log_func=None, progress_func=None, cancel_check=None) -> bool:
     """Prepares USB to completely and cleanly scrub Google Play Services components."""
@@ -946,7 +946,7 @@ def prepare_uninstall_gms_usb(usb_drive: str, log_func=None, progress_func=None,
         if log_func:
             log_func(msg)
 
-    _log(f"\n── [4/9] Preparing Uninstall GMS USB: {usb_drive} ──")
+    _log(f"\n── [6/13] Preparing Uninstall GMS USB: {usb_drive} ──")
     if not os.path.exists(usb_drive):
         _log(f"  ✗ USB Drive not found: {usb_drive}")
         return False
@@ -1079,7 +1079,7 @@ The scrub payload performs a rigorous, deep system purge:
 
 
 # ===========================================================================
-# 5. OPEN SETTINGS PAYLOAD
+# 4. OPEN SETTINGS PAYLOAD
 # ===========================================================================
 def prepare_open_settings_usb(usb_drive: str, log_func=None, progress_func=None, cancel_check=None) -> bool:
     """Prepares USB payload to unlock and launch native Android Settings on car screen."""
@@ -1087,7 +1087,7 @@ def prepare_open_settings_usb(usb_drive: str, log_func=None, progress_func=None,
         if log_func:
             log_func(msg)
 
-    _log(f"\n── [5/9] Preparing Open Settings USB: {usb_drive} ──")
+    _log(f"\n── [4/13] Preparing Open Settings USB: {usb_drive} ──")
     if not os.path.exists(usb_drive):
         _log(f"  ✗ USB Drive not found: {usb_drive}")
         return False
@@ -1174,7 +1174,7 @@ The script bypasses the restricted proprietary Dongfeng launcher to directly lau
 
 
 # ===========================================================================
-# 6. BACKUP PAYLOAD (CAR TO USB)
+# 10. BACKUP PAYLOAD (CAR TO USB)
 # ===========================================================================
 def prepare_backup_usb(
     usb_drive: str,
@@ -1195,7 +1195,7 @@ def prepare_backup_usb(
     if b_type_clean not in ("personal", "community"):
         b_type_clean = "personal"
 
-    _log(f"\n── [6/9] Preparing {b_type_clean.upper()} Backup USB: {usb_drive} ──")
+    _log(f"\n── [10/13] Preparing {b_type_clean.upper()} Backup USB: {usb_drive} ──")
     if b_type_clean == "community":
         _log(f"  Scope:       🌐 Community Shared Preset (Safe for sharing)")
         _log(f"  Preset Name: {preset_name or 'Community Preset'}")
@@ -1509,7 +1509,7 @@ Layers processed:
 
 
 # ===========================================================================
-# 7. FACTORY RESET PAYLOAD (ZERO-TRACE RESTORATION)
+# 12. FACTORY RESET PAYLOAD (ZERO-TRACE RESTORATION)
 # ===========================================================================
 def prepare_factory_reset_usb(usb_drive: str, local_factory_backup_dir: str = "", log_func=None, progress_func=None, cancel_check=None) -> bool:
     """Prepares USB to restore vehicle to pristine factory zero state."""
@@ -1517,7 +1517,7 @@ def prepare_factory_reset_usb(usb_drive: str, local_factory_backup_dir: str = ""
         if log_func:
             log_func(msg)
 
-    _log(f"\n── [7/9] Preparing Factory Reset USB (Zero-Trace Purge): {usb_drive} ──")
+    _log(f"\n── [12/13] Preparing Factory Reset USB (Zero-Trace Purge): {usb_drive} ──")
     if not os.path.exists(usb_drive):
         _log(f"  ✗ USB Drive not found: {usb_drive}")
         return False
@@ -1763,7 +1763,7 @@ Ideal for returning the vehicle to the dealership with zero detected modificatio
 
 
 # ===========================================================================
-# 8. RESTORE PAYLOAD (PC TO USB TO CAR)
+# 11. RESTORE PAYLOAD (PC TO USB TO CAR)
 # ===========================================================================
 def prepare_restore_usb(usb_drive: str, local_backup_folder: str, log_func=None, progress_func=None, cancel_check=None) -> bool:
     """
@@ -1774,7 +1774,7 @@ def prepare_restore_usb(usb_drive: str, local_backup_folder: str, log_func=None,
         if log_func:
             log_func(msg)
 
-    _log(f"\n── [8/9] Preparing Restore USB: {usb_drive} ──")
+    _log(f"\n── [11/13] Preparing Restore USB: {usb_drive} ──")
     if not os.path.exists(usb_drive):
         _log(f"  ✗ USB Drive not found: {usb_drive}")
         return False
@@ -2333,7 +2333,7 @@ The restore engine executes an exact 12-step restoration of your saved vehicle b
 
 
 # ===========================================================================
-# 9. FETCH LOGS PAYLOAD
+# 13. FETCH LOGS PAYLOAD
 # ===========================================================================
 def prepare_fetch_logs_usb(usb_drive: str, log_func=None, progress_func=None, cancel_check=None) -> bool:
     """Prepares USB to extract logcat, dmesg, and diagnostic dumps from car."""
@@ -2341,7 +2341,7 @@ def prepare_fetch_logs_usb(usb_drive: str, log_func=None, progress_func=None, ca
         if log_func:
             log_func(msg)
 
-    _log(f"\n── [9/9] Preparing Fetch Logs USB: {usb_drive} ──")
+    _log(f"\n── [13/13] Preparing Fetch Logs USB: {usb_drive} ──")
     if not os.path.exists(usb_drive):
         _log(f"  ✗ USB Drive not found: {usb_drive}")
         return False
@@ -2456,7 +2456,7 @@ Extracted Diagnostic Data:
 
 
 # ===========================================================================
-# 10. DISABLE FACTORY LAUNCHER PAYLOAD
+# 7. DISABLE FACTORY LAUNCHER PAYLOAD
 # ===========================================================================
 def prepare_disable_launcher_usb(usb_drive: str, log_func=None, progress_func=None, cancel_check=None) -> bool:
     """Prepares USB payload to freeze (disable) the stock Dongfeng system launcher."""
@@ -2464,7 +2464,7 @@ def prepare_disable_launcher_usb(usb_drive: str, log_func=None, progress_func=No
         if log_func:
             log_func(msg)
 
-    _log(f"\n── [10/13] Preparing Disable Factory Launcher USB: {usb_drive} ──")
+    _log(f"\n── [7/13] Preparing Disable Factory Launcher USB: {usb_drive} ──")
     if not os.path.exists(usb_drive):
         _log(f"  ✗ USB Drive not found: {usb_drive}")
         return False
@@ -2561,7 +2561,7 @@ This payload safely freezes (disables) the factory proprietary launcher:
 
 
 # ===========================================================================
-# 11. ENABLE FACTORY LAUNCHER PAYLOAD
+# 8. ENABLE FACTORY LAUNCHER PAYLOAD
 # ===========================================================================
 def prepare_enable_launcher_usb(usb_drive: str, log_func=None, progress_func=None, cancel_check=None) -> bool:
     """Prepares USB payload to unfreeze (enable) the stock Dongfeng system launcher."""
@@ -2569,7 +2569,7 @@ def prepare_enable_launcher_usb(usb_drive: str, log_func=None, progress_func=Non
         if log_func:
             log_func(msg)
 
-    _log(f"\n── [11/13] Preparing Enable Factory Launcher USB: {usb_drive} ──")
+    _log(f"\n── [8/13] Preparing Enable Factory Launcher USB: {usb_drive} ──")
     if not os.path.exists(usb_drive):
         _log(f"  ✗ USB Drive not found: {usb_drive}")
         return False
@@ -2666,7 +2666,7 @@ This payload restores and unfreezes the stock factory launcher:
 
 
 # ===========================================================================
-# 12. OPEN SPECIFIC APPLICATION PAYLOAD
+# 3. OPEN SPECIFIC APPLICATION PAYLOAD
 # ===========================================================================
 def prepare_open_app_usb(usb_drive: str, package_name: str, app_name: str = "", log_func=None, progress_func=None, cancel_check=None) -> bool:
     """Prepares USB payload to launch a specific application on the vehicle screen if installed."""
@@ -2675,7 +2675,7 @@ def prepare_open_app_usb(usb_drive: str, package_name: str, app_name: str = "", 
             log_func(msg)
 
     display_label = app_name or package_name
-    _log(f"\n── [12/13] Preparing Open App USB ({display_label}): {usb_drive} ──")
+    _log(f"\n── [3/13] Preparing Open App USB ({display_label}): {usb_drive} ──")
     if not os.path.exists(usb_drive):
         _log(f"  ✗ USB Drive not found: {usb_drive}")
         return False
@@ -2780,7 +2780,7 @@ This payload launches the selected application directly:
 
 
 # ===========================================================================
-# 13. REBOOT INFOTAINMENT SCREEN PAYLOAD
+# 9. REBOOT INFOTAINMENT SCREEN PAYLOAD
 # ===========================================================================
 def prepare_reboot_screen_usb(usb_drive: str, log_func=None, progress_func=None, cancel_check=None) -> bool:
     """Prepares USB payload to instantly reboot / restart the car's Android infotainment unit."""
@@ -2788,7 +2788,7 @@ def prepare_reboot_screen_usb(usb_drive: str, log_func=None, progress_func=None,
         if log_func:
             log_func(msg)
 
-    _log(f"\n── [13/13] Preparing Restart Infotainment Screen USB: {usb_drive} ──")
+    _log(f"\n── [9/13] Preparing Restart Infotainment Screen USB: {usb_drive} ──")
     if not os.path.exists(usb_drive):
         _log(f"  ✗ USB Drive not found: {usb_drive}")
         return False
