@@ -7,6 +7,7 @@ import os
 import sys
 import threading
 import time
+import re
 
 from PySide6.QtCore import Qt, QThread, Signal, Slot, QObject, QTimer, QPoint, QPropertyAnimation, QEasingCurve
 from PySide6.QtGui import QIcon, QFont, QColor, QTextCursor, QAction, QCursor
@@ -698,11 +699,14 @@ class AeroSuiteQtApp(QMainWindow):
         else:
             menu.exec(QCursor.pos())
 
-    def _open_usb_in_explorer(self):
-        if not self._check_usb_ready(): return
+    def _open_usb_in_explorer(self, target_path: str = None):
+        drive = target_path or (self.current_usb.letter if self.current_usb else None)
+        if not drive:
+            if not self._check_usb_ready(): return
+            drive = self.current_usb.letter
         try:
-            os.startfile(self.current_usb.letter)
-            self.log_terminal(f"Opened target USB {self.current_usb.letter} in Windows Explorer.", "mint")
+            os.startfile(drive)
+            self.log_terminal(f"Opened target USB {drive} in Windows Explorer.", "mint")
         except Exception as e:
             self.show_error_dialog("Error", f"Failed to open USB drive: {e}")
 
@@ -926,7 +930,35 @@ class AeroSuiteQtApp(QMainWindow):
         return msg_box.clickedButton() == btn_yes
 
     def show_success_dialog(self, title: str, message: str):
-        QMessageBox.information(self, title, message)
+        msg_box = QMessageBox(self)
+        msg_box.setWindowModality(Qt.WindowModal)
+        msg_box.setWindowTitle(title)
+        msg_box.setText(message)
+        msg_box.setIcon(QMessageBox.Information)
+
+        btn_open = msg_box.addButton("📂 Open USB Drive", QMessageBox.ActionRole)
+        btn_ok = msg_box.addButton("OK", QMessageBox.AcceptRole)
+
+        btn_open.setStyleSheet(
+            f"background-color: {theme.SURFACE_3}; color: {theme.TEXT_PRIMARY}; "
+            f"font-weight: 600; padding: 6px 14px; border: 1px solid {theme.BORDER_SLATE}; "
+            f"border-radius: 6px; min-height: 20px;"
+        )
+        btn_ok.setStyleSheet(
+            f"background-color: {theme.CYAN_PRIMARY}; color: black; font-weight: bold; "
+            f"padding: 6px 20px; border: 1px solid {theme.CYAN_PRIMARY}; border-radius: 6px; min-height: 20px;"
+        )
+
+        msg_box.setDefaultButton(btn_ok)
+        msg_box.exec()
+
+        if msg_box.clickedButton() == btn_open:
+            drive = self.current_usb.letter if self.current_usb else None
+            if not drive:
+                m = re.search(r'drive\s+([A-Za-z]:[\\/]?)', message, re.IGNORECASE)
+                if m:
+                    drive = m.group(1)
+            self._open_usb_in_explorer(drive)
 
     def show_error_dialog(self, title: str, message: str):
         QMessageBox.critical(self, title, message)
