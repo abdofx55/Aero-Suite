@@ -1333,6 +1333,12 @@ cp -f /data/system/users/0/appwidgets.xml "$TARGET_DIR/settings/" >> "$LOG_FILE"
 cp -f /system/etc/permissions/voice_recognizers.xml "$TARGET_DIR/settings/" >> "$LOG_FILE" 2>&1
 cp -f /system/build.prop "$TARGET_DIR/settings/" >> "$LOG_FILE" 2>&1
 
+# Capture explicit default launcher component & stock launcher freeze state
+cmd package resolve-activity -c android.intent.category.HOME -a android.intent.action.MAIN | grep "name=" | head -n 1 > "$TARGET_DIR/settings/default_launcher.txt" 2>/dev/null
+if pm list packages -d 2>/dev/null | grep -q "com.qinggan.app.launcher"; then
+    echo "FROZEN" > "$TARGET_DIR/settings/oem_launcher_state.txt"
+fi
+
 # Personal mode preserves locksettings; Community skips locksettings to prevent vehicle locks
 if [ "{b_type_sh}" = "PERSONAL" ]; then
     cp -f /data/system/locksettings.db* "$TARGET_DIR/settings/" >> "$LOG_FILE" 2>&1
@@ -1375,14 +1381,18 @@ done
 
 # 3. Accounts & App Data
 if [ "{b_type_sh}" = "PERSONAL" ]; then
-    mkdir -p "$TARGET_DIR/accounts" "$TARGET_DIR/data_data" >> "$LOG_FILE" 2>&1
+    mkdir -p "$TARGET_DIR/accounts" "$TARGET_DIR/keystore" "$TARGET_DIR/data_data" >> "$LOG_FILE" 2>&1
     cp -f /data/system/users/0/accounts.db* "$TARGET_DIR/accounts/" >> "$LOG_FILE" 2>&1
     cp -f /data/system_de/0/accounts_de.db* "$TARGET_DIR/accounts/" >> "$LOG_FILE" 2>&1
+    if [ -d "/data/misc/keystore" ]; then
+        cp -r /data/misc/keystore/* "$TARGET_DIR/keystore/" >> "$LOG_FILE" 2>&1
+    fi
     if [ -d "/data/system/sync" ]; then
         mkdir -p "$TARGET_DIR/accounts/sync" >> "$LOG_FILE" 2>&1
         cp -r /data/system/sync/* "$TARGET_DIR/accounts/sync/" >> "$LOG_FILE" 2>&1
     fi
-    for gms_dir in /data/data/com.google.*; do
+    # Backup all Google and Play Store databases & tokens
+    for gms_dir in /data/data/com.google.* /data/data/com.android.vending; do
         if [ -d "$gms_dir" ]; then
             cp -r "$gms_dir" "$TARGET_DIR/data_data/" >> "$LOG_FILE" 2>&1
         fi
@@ -1446,7 +1456,7 @@ for c_dir in "$TARGET_DIR/system_apps/priv-app/"* "$TARGET_DIR/system_apps/app/"
         c_bname=$(basename "$c_dir")
         for c_apk in "$c_dir"/*.apk; do
             if [ -f "$c_apk" ]; then
-                c_pkg=$(pm list packages -f | grep "$c_bname" | cut -d '=' -f 2)
+                c_pkg=$(pm list packages -f | grep "$c_bname" | cut -d '=' -f 2 | head -n 1)
                 if [ -n "$c_pkg" ] && [ -d "/data/data/$c_pkg" ] && [ ! -d "$TARGET_DIR/data_data/$c_pkg" ]; then
                     cp -r "/data/data/$c_pkg" "$TARGET_DIR/data_data/" >> "$LOG_FILE" 2>&1
                 fi
@@ -1501,6 +1511,59 @@ if [ "{inc_media_sh}" = "1" ]; then
 else
     echo "User Media disabled: Skipping /sdcard backup for fast lightweight archive." >> "$LOG_FILE"
 fi
+
+# 7. Generate Comprehensive Backup Manifest & Restoration Strategy Checklist
+MANIFEST_FILE="$TARGET_DIR/Backup_Manifest.txt"
+echo "==========================================================" > "$MANIFEST_FILE"
+echo "📋 AERO SUITE v2.0 — BACKUP MANIFEST & STRATEGY CHECKLIST" >> "$MANIFEST_FILE"
+echo "==========================================================" >> "$MANIFEST_FILE"
+echo "Backup Date:    $(date)" >> "$MANIFEST_FILE"
+echo "Vehicle Model:  $CAR_MODEL" >> "$MANIFEST_FILE"
+echo "ROM Build ID:   $BUILD_ID" >> "$MANIFEST_FILE"
+echo "Backup Type:    {b_type_sh}" >> "$MANIFEST_FILE"
+echo "Preset Name:    {p_name_sh}" >> "$MANIFEST_FILE"
+echo "Author:         {author_sh}" >> "$MANIFEST_FILE"
+echo "Include Media:  {inc_media_sh}" >> "$MANIFEST_FILE"
+echo "" >> "$MANIFEST_FILE"
+echo "── 1. Captured User Applications (/data/app) ──" >> "$MANIFEST_FILE"
+if [ -d "$TARGET_DIR/data_apps" ]; then
+    for u in "$TARGET_DIR/data_apps/"*; do
+        if [ -e "$u" ]; then echo "  [App] $(basename "$u")" >> "$MANIFEST_FILE"; fi
+    done
+fi
+echo "" >> "$MANIFEST_FILE"
+echo "── 2. Captured Custom System Apps (/system/priv-app & app) ──" >> "$MANIFEST_FILE"
+if [ -d "$TARGET_DIR/system_apps/priv-app" ]; then
+    for s in "$TARGET_DIR/system_apps/priv-app/"*; do
+        if [ -d "$s" ]; then echo "  [Priv-App] $(basename "$s")" >> "$MANIFEST_FILE"; fi
+    done
+fi
+if [ -d "$TARGET_DIR/system_apps/app" ]; then
+    for s in "$TARGET_DIR/system_apps/app/"*; do
+        if [ -d "$s" ]; then echo "  [System-App] $(basename "$s")" >> "$MANIFEST_FILE"; fi
+    done
+fi
+echo "" >> "$MANIFEST_FILE"
+echo "── 3. Launcher & UI Configuration ──" >> "$MANIFEST_FILE"
+if [ -f "$TARGET_DIR/settings/default_launcher.txt" ]; then
+    echo "  Default Launcher: $(cat "$TARGET_DIR/settings/default_launcher.txt")" >> "$MANIFEST_FILE"
+fi
+if [ -f "$TARGET_DIR/settings/oem_launcher_state.txt" ]; then
+    echo "  Stock OEM Launcher: FROZEN (Will be re-frozen on restore)" >> "$MANIFEST_FILE"
+else
+    echo "  Stock OEM Launcher: ACTIVE" >> "$MANIFEST_FILE"
+fi
+echo "" >> "$MANIFEST_FILE"
+echo "── 4. Google Services & Keystore ──" >> "$MANIFEST_FILE"
+if [ -d "$TARGET_DIR/keystore" ] && [ -n "$(ls -A "$TARGET_DIR/keystore" 2>/dev/null)" ]; then
+    echo "  Keystore: Master keys archived (1:1 Auth Token Preservation)" >> "$MANIFEST_FILE"
+else
+    echo "  Keystore: Not present" >> "$MANIFEST_FILE"
+fi
+if [ -f "$TARGET_DIR/accounts/accounts.db" ]; then
+    echo "  Accounts DB: Google & System account database archived" >> "$MANIFEST_FILE"
+fi
+echo "==========================================================" >> "$MANIFEST_FILE"
 
 sync
 if [ "$BACKUP_FAILED" -eq 0 ]; then
@@ -2002,15 +2065,22 @@ if [ -d "$TARGET_DIR/system_apps/app" ]; then
     done
 fi
 
-# 3. Voice Recognizers
+# 3. Voice Recognizers, Keystore Master Keys & Accounts DB
 if [ -f "$TARGET_DIR/settings/voice_recognizers.xml" ]; then
     cp -f "$TARGET_DIR/settings/voice_recognizers.xml" /system/etc/permissions/ >> "$LOG_FILE" 2>&1
     chmod 644 /system/etc/permissions/voice_recognizers.xml >> "$LOG_FILE" 2>&1
 fi
 
-# 4. Accounts (Personal Only — Community Presets leave vehicle accounts untouched)
+if [ -d "$TARGET_DIR/keystore" ]; then
+    echo "Restoring Android Keystore Master Keys (Auth Token Preservation)..." >> "$LOG_FILE"
+    mkdir -p /data/misc/keystore >> "$LOG_FILE" 2>&1
+    cp -r "$TARGET_DIR/keystore/"* /data/misc/keystore/ >> "$LOG_FILE" 2>&1
+    chown -R keystore:keystore /data/misc/keystore >> "$LOG_FILE" 2>&1
+    chmod 700 /data/misc/keystore >> "$LOG_FILE" 2>&1
+fi
+
 if [ -f "$TARGET_DIR/accounts/accounts.db" ]; then
-    echo "Restoring Personal Accounts..." >> "$LOG_FILE"
+    echo "Restoring Personal Accounts DB & Sync Tables..." >> "$LOG_FILE"
     mkdir -p /data/system/users/0 /data/system_de/0 >> "$LOG_FILE" 2>&1
     cp -f "$TARGET_DIR/accounts/accounts.db"* /data/system/users/0/ >> "$LOG_FILE" 2>&1
     cp -f "$TARGET_DIR/accounts/accounts_de.db"* /data/system_de/0/ >> "$LOG_FILE" 2>&1
@@ -2024,7 +2094,19 @@ else
     echo "Community Preset / No Accounts in backup: Preserving target vehicle accounts untouched." >> "$LOG_FILE"
 fi
 
-# 5. Properties & Settings XMLs
+# 4. Enforce Device Provisioning & Setup Complete Flags (Crucial for GMS & Play Store)
+echo "Enforcing Setup Completion & Non-Market Install Policies..." >> "$LOG_FILE"
+settings put global device_provisioned 1 >> "$LOG_FILE" 2>&1
+settings put secure user_setup_complete 1 >> "$LOG_FILE" 2>&1
+setprop persist.ais_server.3app.perm 1 >> "$LOG_FILE" 2>&1
+settings put global install_non_market_apps 1 >> "$LOG_FILE" 2>&1
+settings put secure install_non_market_apps 1 >> "$LOG_FILE" 2>&1
+settings put system install_non_market_apps 1 >> "$LOG_FILE" 2>&1
+settings put global package_verifier_enable 0 >> "$LOG_FILE" 2>&1
+settings put global package_verifier_user_consent -1 >> "$LOG_FILE" 2>&1
+settings put global verifier_verify_adb_installs 0 >> "$LOG_FILE" 2>&1
+
+# 5. Restore System Settings & Properties
 if [ -d "$TARGET_DIR/property" ]; then
     mkdir -p /data/property >> "$LOG_FILE" 2>&1
     cp -r "$TARGET_DIR/property/"* /data/property/ >> "$LOG_FILE" 2>&1
@@ -2041,22 +2123,13 @@ if [ -d "$TARGET_DIR/property" ]; then
     done
 fi
 cp -f "$TARGET_DIR/settings/settings_"*.xml /data/system/users/0/ >> "$LOG_FILE" 2>&1
-chmod 600 /data/system/users/0/settings_*.xml >> "$LOG_FILE" 2>&1
-chown system:system /data/system/users/0/settings_*.xml >> "$LOG_FILE" 2>&1
-
-# 6. Runtime Permissions, AppOps & Widgets
 cp -f "$TARGET_DIR/settings/runtime-permissions.xml" /data/system/users/0/ >> "$LOG_FILE" 2>&1
 cp -f "$TARGET_DIR/settings/appops.xml" /data/system/ >> "$LOG_FILE" 2>&1
 cp -f "$TARGET_DIR/settings/appwidgets.xml" /data/system/users/0/ >> "$LOG_FILE" 2>&1
-chmod 600 /data/system/users/0/runtime-permissions.xml /data/system/appops.xml /data/system/users/0/appwidgets.xml >> "$LOG_FILE" 2>&1
-chown system:system /data/system/users/0/runtime-permissions.xml /data/system/appops.xml /data/system/users/0/appwidgets.xml >> "$LOG_FILE" 2>&1
+chmod 600 /data/system/users/0/settings_*.xml /data/system/users/0/runtime-permissions.xml /data/system/appops.xml /data/system/users/0/appwidgets.xml >> "$LOG_FILE" 2>&1
+chown system:system /data/system/users/0/settings_*.xml /data/system/users/0/runtime-permissions.xml /data/system/appops.xml /data/system/users/0/appwidgets.xml >> "$LOG_FILE" 2>&1
 
-# 7. Launcher Freeze State & Default Home
-cp -f "$TARGET_DIR/settings/package-restrictions.xml" /data/system/users/0/ >> "$LOG_FILE" 2>&1
-chmod 600 /data/system/users/0/package-restrictions.xml >> "$LOG_FILE" 2>&1
-chown system:system /data/system/users/0/package-restrictions.xml >> "$LOG_FILE" 2>&1
-
-# 8. User Apps - Pure /data/app Installation via Package Manager
+# 6. User Apps - Pure /data/app Installation via Package Manager
 echo "Cleaning any user apps previously placed in /system/app..." >> "$LOG_FILE"
 mount -o remount,rw /system >> "$LOG_FILE" 2>&1
 for u_check in "$TARGET_DIR/data_apps/"*; do
@@ -2071,15 +2144,6 @@ for u_check in "$TARGET_DIR/data_apps/"*; do
 done
 
 if [ -d "$TARGET_DIR/data_apps" ]; then
-    echo "Unlocking OEM third-party app installation policies..." >> "$LOG_FILE"
-    setprop persist.ais_server.3app.perm 1 >> "$LOG_FILE" 2>&1
-    settings put global install_non_market_apps 1 >> "$LOG_FILE" 2>&1
-    settings put secure install_non_market_apps 1 >> "$LOG_FILE" 2>&1
-    settings put system install_non_market_apps 1 >> "$LOG_FILE" 2>&1
-    settings put global package_verifier_enable 0 >> "$LOG_FILE" 2>&1
-    settings put global package_verifier_user_consent -1 >> "$LOG_FILE" 2>&1
-    settings put global verifier_verify_adb_installs 0 >> "$LOG_FILE" 2>&1
-
     echo "Installing User Apps to /data/app..." >> "$LOG_FILE"
     STAGE_DIR="/data/local/tmp/user_restore_stage"
     for appdir in "$TARGET_DIR/data_apps/"*; do
@@ -2212,28 +2276,39 @@ if [ -d "$TARGET_DIR/data_apps" ]; then
     done
 fi
 
-# 9. App Internal Data with Dynamic UIDs & SELinux Restoration
+# 7. App Internal Data with Dynamic UIDs & Preserving Library Symlinks
 if [ -d "$TARGET_DIR/data_data" ]; then
-    echo "Restoring App Data and Preferences..." >> "$LOG_FILE"
+    echo "Restoring App Data with Dynamic UID resolution..." >> "$LOG_FILE"
     for pdir in "$TARGET_DIR/data_data/"*; do
         if [ -d "$pdir" ]; then
             pname=$(basename "$pdir")
             dest_dir="/data/data/$pname"
             mkdir -p "$dest_dir" >> "$LOG_FILE" 2>&1
-            cp -r "$pdir/"* "$dest_dir/" >> "$LOG_FILE" 2>&1
-            puid=""
-            if [ -f "/data/system/packages.list" ]; then
+
+            # Smart merge: copy databases, shared_prefs, files, but PRESERVE lib symlink and caches
+            for item in "$pdir/"*; do
+                if [ -e "$item" ]; then
+                    iname=$(basename "$item")
+                    if [ "$iname" != "lib" ] && [ "$iname" != "cache" ] && [ "$iname" != "code_cache" ]; then
+                        cp -r "$item" "$dest_dir/" >> "$LOG_FILE" 2>&1
+                    fi
+                fi
+            done
+
+            # Read actual live UID assigned by Android PM
+            APP_UID=$(stat -c %u "$dest_dir" 2>/dev/null)
+            if [ -n "$APP_UID" ] && [ "$APP_UID" -ge 10000 ]; then
+                chown -R "$APP_UID:$APP_UID" "$dest_dir" >> "$LOG_FILE" 2>&1
+            elif [ -f "/data/system/packages.list" ]; then
                 puid=$(awk -v p="$pname" '$1==p {print $2}' /data/system/packages.list)
-            fi
-            if [ -n "$puid" ]; then
-                chown -R "$puid:$puid" "$dest_dir" >> "$LOG_FILE" 2>&1
-            else
-                chown -R 1000:1000 "$dest_dir" >> "$LOG_FILE" 2>&1
+                if [ -n "$puid" ]; then
+                    chown -R "$puid:$puid" "$dest_dir" >> "$LOG_FILE" 2>&1
+                fi
             fi
             chmod 751 "$dest_dir" >> "$LOG_FILE" 2>&1
+            restorecon -R "$dest_dir" >> "$LOG_FILE" 2>&1
         fi
     done
-    restorecon -R /data/data >> "$LOG_FILE" 2>&1
     restorecon -R /data/system >> "$LOG_FILE" 2>&1
 fi
 
@@ -2255,7 +2330,16 @@ if [ -d "$TARGET_DIR/user_de" ]; then
     fi
 fi
 
-# 10. Wi-Fi, Bluetooth & Developer Mode
+# 8. Break Android FLAG_STOPPED State (Awaken Apps for Vehicle Autostart)
+echo "Waking up applications from STOPPED state for vehicle boot..." >> "$LOG_FILE"
+for pdir in "$TARGET_DIR/data_data/"*; do
+    if [ -d "$pdir" ]; then
+        pname=$(basename "$pdir")
+        am broadcast -a android.intent.action.BOOT_COMPLETED -p "$pname" --include-stopped-packages >/dev/null 2>&1
+    fi
+done
+
+# 9. Wi-Fi, Bluetooth & Developer Mode
 if [ -d "$TARGET_DIR/wifi_bt/wifi" ]; then
     echo "Restoring Wi-Fi configurations..." >> "$LOG_FILE"
     mkdir -p /data/misc/wifi >> "$LOG_FILE" 2>&1
@@ -2273,6 +2357,7 @@ if [ -d "$TARGET_DIR/wifi_bt/bluedroid" ]; then
     chmod -R 770 /data/misc/bluedroid >> "$LOG_FILE" 2>&1
 fi
 if [ -d "$TARGET_DIR/wifi_bt/bluetooth" ]; then
+    echo "Restoring Bluetooth pairings..." >> "$LOG_FILE"
     mkdir -p /data/misc/bluetooth >> "$LOG_FILE" 2>&1
     cp -r "$TARGET_DIR/wifi_bt/bluetooth/"* /data/misc/bluetooth/ >> "$LOG_FILE" 2>&1
     chown -R bluetooth:bluetooth /data/misc/bluetooth >> "$LOG_FILE" 2>&1
@@ -2299,7 +2384,6 @@ if grep -q 'name="development_settings_enabled" value="1"' "$TARGET_DIR/settings
     setprop persist.sys.usb.config diag,serial_smd,rmnet_ipa,adb >> "$LOG_FILE" 2>&1
     setprop persist.adb.tcp.port 5555 >> "$LOG_FILE" 2>&1
 
-    # Pre-unlock Developer Options in Android Settings UI directly
     for s_dir in /data/user_de/0/com.android.settings /data/data/com.android.settings; do
         if [ -d "$s_dir" ]; then
             mkdir -p "$s_dir/shared_prefs" >> "$LOG_FILE" 2>&1
@@ -2310,7 +2394,7 @@ if grep -q 'name="development_settings_enabled" value="1"' "$TARGET_DIR/settings
     done
 fi
 
-# 11. Internal Storage (/data/media/0)
+# 10. Internal Storage (/data/media/0)
 if [ -d "$TARGET_DIR/sdcard" ] && [ -n "$(ls -A "$TARGET_DIR/sdcard" 2>/dev/null)" ]; then
     echo "Restoring Internal Storage files..." >> "$LOG_FILE"
     SD_DEST="/data/media/0"
@@ -2322,21 +2406,35 @@ else
     echo "No media backup to restore: Preserving existing internal storage untouched." >> "$LOG_FILE"
 fi
 
-# 12. Lock /system Read-Only & Auto Reboot
+# 11. Lock /system Read-Only & Set Default Home Launcher
 mount -o remount,ro /system >> "$LOG_FILE" 2>&1
 
-# Respect backup freeze state: if the backup had stock launcher frozen, freeze it right before reboot
-if grep -q 'name="com.qinggan.app.launcher".*enabled="2"' "$TARGET_DIR/settings/package-restrictions.xml" 2>/dev/null; then
-    echo "Restoring stock launcher freeze state from backup..." >> "$LOG_FILE"
+DEF_LAUNCHER_FILE="$TARGET_DIR/settings/default_launcher.txt"
+if [ -f "$DEF_LAUNCHER_FILE" ]; then
+    DEF_COMPONENT=$(cat "$DEF_LAUNCHER_FILE" | cut -d '=' -f 2 | tr -d ' ' 2>/dev/null)
+    if [ -n "$DEF_COMPONENT" ]; then
+        echo "Setting default home launcher: $DEF_COMPONENT" >> "$LOG_FILE"
+        cmd package set-home-activity "$DEF_COMPONENT" >> "$LOG_FILE" 2>&1
+    fi
+fi
+
+if [ -f "$TARGET_DIR/settings/oem_launcher_state.txt" ]; then
+    echo "Re-freezing stock OEM launcher as specified in backup..." >> "$LOG_FILE"
+    pm disable com.qinggan.app.launcher >> "$LOG_FILE" 2>&1
+elif grep -q 'name="com.qinggan.app.launcher".*enabled="2"' "$TARGET_DIR/settings/package-restrictions.xml" 2>/dev/null; then
+    echo "Restoring stock launcher freeze state from XML..." >> "$LOG_FILE"
     pm disable com.qinggan.app.launcher >> "$LOG_FILE" 2>&1
 fi
 
+# 12. Final sync & Kernel Hard Reboot (Prevents system_server In-Memory Overwrite)
 echo "=== RESTORE COMPLETED 100%! REBOOTING DIRECTLY TO ANDROID ===" >> "$LOG_FILE"
 date >> "$LOG_FILE"
 sync
 sleep 2
 sync
-setprop sys.powerctl reboot || reboot -f || reboot
+
+# Kernel Hard Reboot to guarantee zero in-memory flush over restored files
+reboot -f || setprop sys.powerctl reboot || reboot
 """
         write_script_file(os.path.join(update_dir, "custom_rep.sh"), script)
 
