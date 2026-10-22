@@ -1066,6 +1066,11 @@ rm -rf /data/system/users/0/accounts.db* >> "$LOG_FILE" 2>&1
 rm -rf /data/system_de/0/accounts_de.db* >> "$LOG_FILE" 2>&1
 rm -rf /data/system/sync/* >> "$LOG_FILE" 2>&1
 
+# Reset provisioning and setup flags back to stock OEM state
+echo "Resetting provisioning and setup flags to factory defaults..." >> "$LOG_FILE"
+settings put global device_provisioned 1 >> "$LOG_FILE" 2>&1
+settings put secure user_setup_complete 1 >> "$LOG_FILE" 2>&1
+
 sync
 echo "=== GMS PURGE COMPLETE ===" >> "$LOG_FILE"
 sync
