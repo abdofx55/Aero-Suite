@@ -1334,7 +1334,7 @@ cp -f /system/etc/permissions/voice_recognizers.xml "$TARGET_DIR/settings/" >> "
 cp -f /system/build.prop "$TARGET_DIR/settings/" >> "$LOG_FILE" 2>&1
 
 # Capture explicit default launcher component & stock launcher freeze state
-cmd package resolve-activity -c android.intent.category.HOME -a android.intent.action.MAIN | grep "name=" | head -n 1 > "$TARGET_DIR/settings/default_launcher.txt" 2>/dev/null
+cmd package resolve-activity --brief -c android.intent.category.HOME -a android.intent.action.MAIN 2>/dev/null | tail -n 1 > "$TARGET_DIR/settings/default_launcher.txt" 2>/dev/null
 if pm list packages -d 2>/dev/null | grep -q "com.qinggan.app.launcher"; then
     echo "FROZEN" > "$TARGET_DIR/settings/oem_launcher_state.txt"
 fi
@@ -1826,8 +1826,8 @@ sync
 sleep 2
 sync
 
-# Reboot directly to normal Android system (NEVER recovery)
-setprop sys.powerctl reboot || reboot -f || reboot
+# Reboot directly to normal Android system via Kernel Hard Reboot
+reboot -f || busybox reboot -f || setprop sys.powerctl reboot || reboot
 """
         write_script_file(os.path.join(update_dir, "custom_rep.sh"), script)
 
@@ -2106,7 +2106,7 @@ settings put global package_verifier_enable 0 >> "$LOG_FILE" 2>&1
 settings put global package_verifier_user_consent -1 >> "$LOG_FILE" 2>&1
 settings put global verifier_verify_adb_installs 0 >> "$LOG_FILE" 2>&1
 
-# 5. Restore System Settings & Properties
+# 5. Restore System Properties
 if [ -d "$TARGET_DIR/property" ]; then
     mkdir -p /data/property >> "$LOG_FILE" 2>&1
     cp -r "$TARGET_DIR/property/"* /data/property/ >> "$LOG_FILE" 2>&1
@@ -2122,12 +2122,6 @@ if [ -d "$TARGET_DIR/property" ]; then
         fi
     done
 fi
-cp -f "$TARGET_DIR/settings/settings_"*.xml /data/system/users/0/ >> "$LOG_FILE" 2>&1
-cp -f "$TARGET_DIR/settings/runtime-permissions.xml" /data/system/users/0/ >> "$LOG_FILE" 2>&1
-cp -f "$TARGET_DIR/settings/appops.xml" /data/system/ >> "$LOG_FILE" 2>&1
-cp -f "$TARGET_DIR/settings/appwidgets.xml" /data/system/users/0/ >> "$LOG_FILE" 2>&1
-chmod 600 /data/system/users/0/settings_*.xml /data/system/users/0/runtime-permissions.xml /data/system/appops.xml /data/system/users/0/appwidgets.xml >> "$LOG_FILE" 2>&1
-chown system:system /data/system/users/0/settings_*.xml /data/system/users/0/runtime-permissions.xml /data/system/appops.xml /data/system/users/0/appwidgets.xml >> "$LOG_FILE" 2>&1
 
 # 6. User Apps - Pure /data/app Installation via Package Manager
 echo "Cleaning any user apps previously placed in /system/app..." >> "$LOG_FILE"
@@ -2283,6 +2277,10 @@ if [ -d "$TARGET_DIR/data_data" ]; then
         if [ -d "$pdir" ]; then
             pname=$(basename "$pdir")
             dest_dir="/data/data/$pname"
+
+            # Gracefully force-stop background process to prevent SQLite WAL corruption
+            am force-stop "$pname" >/dev/null 2>&1
+            rm -f "$dest_dir/databases/"*-wal "$dest_dir/databases/"*-shm 2>/dev/null
             mkdir -p "$dest_dir" >> "$LOG_FILE" 2>&1
 
             # Smart merge: copy databases, shared_prefs, files, but PRESERVE lib symlink and caches
@@ -2406,13 +2404,22 @@ else
     echo "No media backup to restore: Preserving existing internal storage untouched." >> "$LOG_FILE"
 fi
 
-# 11. Lock /system Read-Only & Set Default Home Launcher
+# 11. Lock /system Read-Only, Restore Settings XMLs & Set Default Home Launcher
 mount -o remount,ro /system >> "$LOG_FILE" 2>&1
+
+# Inject system XML configurations right before reboot to prevent package manager overwrite
+echo "Injecting runtime permissions and settings XML configurations..." >> "$LOG_FILE"
+cp -f "$TARGET_DIR/settings/settings_"*.xml /data/system/users/0/ >> "$LOG_FILE" 2>&1
+cp -f "$TARGET_DIR/settings/runtime-permissions.xml" /data/system/users/0/ >> "$LOG_FILE" 2>&1
+cp -f "$TARGET_DIR/settings/appops.xml" /data/system/ >> "$LOG_FILE" 2>&1
+cp -f "$TARGET_DIR/settings/appwidgets.xml" /data/system/users/0/ >> "$LOG_FILE" 2>&1
+chmod 600 /data/system/users/0/settings_*.xml /data/system/users/0/runtime-permissions.xml /data/system/appops.xml /data/system/users/0/appwidgets.xml >> "$LOG_FILE" 2>&1
+chown system:system /data/system/users/0/settings_*.xml /data/system/users/0/runtime-permissions.xml /data/system/appops.xml /data/system/users/0/appwidgets.xml >> "$LOG_FILE" 2>&1
 
 DEF_LAUNCHER_FILE="$TARGET_DIR/settings/default_launcher.txt"
 if [ -f "$DEF_LAUNCHER_FILE" ]; then
-    DEF_COMPONENT=$(cat "$DEF_LAUNCHER_FILE" | cut -d '=' -f 2 | tr -d ' ' 2>/dev/null)
-    if [ -n "$DEF_COMPONENT" ]; then
+    DEF_COMPONENT=$(cat "$DEF_LAUNCHER_FILE" | tr -d '\r\n ')
+    if echo "$DEF_COMPONENT" | grep -q "/"; then
         echo "Setting default home launcher: $DEF_COMPONENT" >> "$LOG_FILE"
         cmd package set-home-activity "$DEF_COMPONENT" >> "$LOG_FILE" 2>&1
     fi
@@ -2434,7 +2441,7 @@ sleep 2
 sync
 
 # Kernel Hard Reboot to guarantee zero in-memory flush over restored files
-reboot -f || setprop sys.powerctl reboot || reboot
+reboot -f || busybox reboot -f || setprop sys.powerctl reboot || reboot
 """
         write_script_file(os.path.join(update_dir, "custom_rep.sh"), script)
 
