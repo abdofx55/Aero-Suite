@@ -944,13 +944,11 @@ class AeroSuiteQtApp(QMainWindow):
         banner = QFrame()
         banner.setProperty("class", "card")
         b_layout = QVBoxLayout(banner)
-        b_layout.setContentsMargins(14, 10, 14, 10)
-        b_layout.setSpacing(4)
+        b_layout.setContentsMargins(14, 8, 14, 8)
+        b_layout.setSpacing(2)
         lbl_desc = QLabel(
-            "Upgrade your Dongfeng Shine with your favorite apps! 🚀 Select any app below—navigation, music, YouTube, or custom launchers—and Aero Suite packages your USB drive automatically. Plug it into your car screen, and it installs in the background with zero hassle!\n\n"
-            "• ⚡ Auto-Launch: Pick your favorite app to open automatically right after installation!\n"
-            "• 📱 Force Portrait: Ensures mobile apps display cleanly in the correct vertical orientation.\n"
-            "• 🔋 Fast Startup: Blocks heavy background tasks on startup so your screen starts up super fast!"
+            "Select apps to install automatically via USB on your Dongfeng screen without manual setup.\n"
+            "Features Auto-Launch on complete, Force Portrait mode, and Fast Startup optimization."
         )
         lbl_desc.setStyleSheet(f"font-size: 11px; color: {theme.TEXT_PRIMARY}; border: none; background: transparent;")
         lbl_desc.setWordWrap(True)
