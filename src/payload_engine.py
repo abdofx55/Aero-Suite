@@ -493,15 +493,28 @@ fi
 
 sync
 echo "=== INSTALLATION COMPLETED ===" >> "$LOG_FILE"
-
+"""
+        # If any System Apps were staged into /system/priv-app, a reboot is required for Android framework to bind them
+        if system_app_count > 0:
+            script += """
+echo "System app(s) installed. Rebooting infotainment system to register system components..." >> "$LOG_FILE"
+sync
+(sleep 3; setprop sys.powerctl reboot; reboot) &
+"""
+        else:
+            # 3. Auto-Launch Primary Application (for User Apps without reboot)
+            auto_pkg_clean = auto_launch_package.strip()
+            if auto_pkg_clean:
+                script += f"""
 # 3. Auto-Launch Primary Application (if requested)
-AUTO_LAUNCH_PKG="{auto_launch_package.strip()}"
+AUTO_LAUNCH_PKG="{auto_pkg_clean}"
 if [ -n "$AUTO_LAUNCH_PKG" ]; then
     echo "Auto-launching primary application: $AUTO_LAUNCH_PKG..." >> "$LOG_FILE"
     sleep 2
     monkey -p "$AUTO_LAUNCH_PKG" -c android.intent.category.LAUNCHER 1 >> "$LOG_FILE" 2>&1
 fi
 """
+
         write_script_file(os.path.join(update_dir, "custom_rep.sh"), script)
 
         info_path = os.path.join(usb_drive, "Install_Apps_Info.txt")
@@ -664,6 +677,13 @@ mount -o rw,remount /system >> "$LOG_FILE" 2>&1
 
 sync
 echo "=== SAFE UNINSTALL COMPLETED ===" >> "$LOG_FILE"
+
+# If system partitions had files removed, reboot is required to flush system server package caches
+if grep -q "Removing detected install directory: /system" "$LOG_FILE" 2>/dev/null; then
+    echo "System app components were removed. Rebooting infotainment system to clean framework cache..." >> "$LOG_FILE"
+    sync
+    (sleep 3; setprop sys.powerctl reboot; reboot) &
+fi
 """
         write_script_file(os.path.join(update_dir, "custom_rep.sh"), script)
 
@@ -857,6 +877,11 @@ cat << 'EOF' > /system/etc/permissions/voice_recognizers.xml
 </permissions>
 EOF
 chmod 644 /system/etc/permissions/voice_recognizers.xml >> "$LOG_FILE" 2>&1
+
+# Force device provisioning & onboarding completion to prevent Play Store download pending loop
+echo "Forcing device provisioning & onboarding completion flags..." >> "$LOG_FILE"
+settings put global device_provisioned 1 >> "$LOG_FILE" 2>&1
+settings put secure user_setup_complete 1 >> "$LOG_FILE" 2>&1
 
 sync
 echo "=== GMS INJECTION COMPLETE ===" >> "$LOG_FILE"

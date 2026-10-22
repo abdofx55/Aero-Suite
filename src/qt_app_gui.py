@@ -2188,15 +2188,12 @@ class AeroSuiteQtApp(QMainWindow):
         has_bk = False
         bk_date = ""
         if self.current_usb:
-            letter = self.current_usb.letter
-            flag1 = os.path.join(letter, "backup_complete.flag")
-            dir1 = os.path.join(letter, "Backup")
-            dir2 = os.path.join(letter, "PersonalBackup")
-            has_bk = bool(getattr(self.current_usb, "has_backup", False) or os.path.exists(flag1) or os.path.isdir(dir1) or os.path.isdir(dir2))
+            # Strictly rely on current_usb.has_backup (which verifies true car backup flag and disallows restore payloads)
+            has_bk = bool(getattr(self.current_usb, "has_backup", False))
             bk_date = getattr(self.current_usb, "backup_date", "")
 
         if has_bk:
-            date_str = f" ({bk_date})" if bk_date else " (BACKUP DETECTED)"
+            date_str = f" ({bk_date})" if bk_date else ""
             self.btn_sync.setEnabled(True)
             self.btn_sync.setText(f"📥 SYNC VEHICLE BACKUP TO PC VAULT{date_str}")
         else:
