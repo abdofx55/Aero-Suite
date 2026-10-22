@@ -937,7 +937,7 @@ class AeroSuiteQtApp(QMainWindow):
         msg_box.setIcon(QMessageBox.Information)
 
         btn_open = msg_box.addButton("📂 Open USB Drive", QMessageBox.ActionRole)
-        btn_ok = msg_box.addButton("OK", QMessageBox.AcceptRole)
+        btn_ok = msg_box.addButton("OK", QMessageBox.RejectRole)
 
         btn_open.setStyleSheet(
             f"background-color: {theme.SURFACE_3}; color: {theme.TEXT_PRIMARY}; "
@@ -1396,6 +1396,46 @@ class AeroSuiteQtApp(QMainWindow):
         selected = [a for a in self.local_apks if self.selected_install_apks.get(a["filename"], False)]
         if not selected:
             return
+
+        # Conflict Check: System App installation requires reboot, which prevents Auto-Launch from executing
+        system_apps = [a for a in selected if self.per_app_target.get(a["filename"], "user") == "system"]
+        auto_launch_app = next((a for a in selected if a["filename"] == self.auto_launch_app_filename), None) if self.auto_launch_app_filename else None
+
+        if system_apps and auto_launch_app:
+            sys_names = ", ".join(f"'{a['display_name']}'" for a in system_apps[:3])
+            if len(system_apps) > 3:
+                sys_names += f" and {len(system_apps) - 3} more"
+
+            msg_box = QMessageBox(self)
+            msg_box.setWindowModality(Qt.WindowModal)
+            msg_box.setWindowTitle("System App & Auto-Launch Conflict")
+            msg_box.setIcon(QMessageBox.Warning)
+            conflict_msg = (
+                f"⚠️ Conflict Detected: System Applications Require Restart\n\n"
+                f"You have selected application(s) ({sys_names}) to install as 'System App' (/system/app).\n\n"
+                f"Installing System Apps requires the infotainment screen to reboot automatically to register the system packages. "
+                f"Because the screen reboots immediately after installation, 'Auto Launch' cannot execute.\n\n"
+                f"How would you like to resolve this?\n"
+                f"  • Uncheck 'Auto Launch' from '{auto_launch_app['display_name']}' and proceed, OR\n"
+                f"  • Go back and change the target partition to 'User App'."
+            )
+            msg_box.setText(conflict_msg)
+
+            btn_auto = msg_box.addButton("⚡ Uncheck Auto-Launch & Proceed", QMessageBox.ActionRole)
+            btn_back = msg_box.addButton("Go Back & Edit", QMessageBox.RejectRole)
+
+            btn_auto.setStyleSheet(f"background-color: {theme.CYAN_PRIMARY}; color: black; font-weight: bold; padding: 6px 14px; border-radius: 6px; min-height: 20px;")
+            btn_back.setStyleSheet(f"background-color: {theme.SURFACE_3}; color: {theme.TEXT_PRIMARY}; font-weight: 600; padding: 6px 14px; border: 1px solid {theme.BORDER_SLATE}; border-radius: 6px; min-height: 20px;")
+
+            msg_box.setDefaultButton(btn_back)
+            msg_box.exec()
+
+            if msg_box.clickedButton() == btn_auto:
+                self._on_auto_launch_toggle(auto_launch_app["filename"], False)
+                self.log_terminal(f"Auto-Launch disabled for '{auto_launch_app['display_name']}' due to System App reboot requirement.", "mint")
+            else:
+                self.log_terminal("Installation paused: System apps require a reboot, which conflicts with Auto-Launch. Please adjust your configuration.", "warn")
+                return
 
         letter = self.current_usb.letter
         if len(selected) <= 15:
