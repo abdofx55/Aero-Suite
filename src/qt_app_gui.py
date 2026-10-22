@@ -310,7 +310,7 @@ class AeroSuiteQtApp(QMainWindow):
         nav_scroll.setWidgetResizable(True)
         nav_widget = QWidget()
         self.nav_layout = QVBoxLayout(nav_widget)
-        self.nav_layout.setContentsMargins(0, 4, 0, 4)
+        self.nav_layout.setContentsMargins(6, 4, 10, 4)
         self.nav_layout.setSpacing(2)
 
         # EXACT ORIGINAL FEATURE CATEGORIES & NAMES
@@ -344,7 +344,7 @@ class AeroSuiteQtApp(QMainWindow):
                 sep = QFrame()
                 sep.setFrameShape(QFrame.HLine)
                 sep.setFixedHeight(1)
-                sep.setStyleSheet(f"background-color: {theme.BORDER_SLATE}; border: none; margin: 4px 8px;")
+                sep.setStyleSheet(f"background-color: {theme.BORDER_SLATE}; border: none; margin: 4px 4px;")
                 self.nav_layout.addWidget(sep)
             lbl_cat = QLabel(cat_title)
             lbl_cat.setProperty("class", "navCategory")
