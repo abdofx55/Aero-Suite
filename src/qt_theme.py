@@ -111,7 +111,7 @@ def get_application_stylesheet() -> str:
         font-size: 12px;
         font-weight: 600;
         outline: none;
-        min-height: 28px;
+        min-height: 18px;
     }}
     QPushButton:hover {{
         background-color: {theme.SURFACE_3};
@@ -215,6 +215,7 @@ def get_application_stylesheet() -> str:
         border-radius: 6px;
         padding: 6px 10px;
         font-size: 12px;
+        min-height: 18px;
         selection-background-color: {theme.CYAN_DIM};
     }}
     QLineEdit:focus {{

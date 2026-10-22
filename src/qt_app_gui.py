@@ -974,23 +974,28 @@ class AeroSuiteQtApp(QMainWindow):
         # Controls & Search Strip
         ctrl_bar = QHBoxLayout()
         btn_all = QPushButton("Select All")
+        btn_all.setFixedHeight(32)
         btn_all.clicked.connect(lambda: self._set_all_install_apks(True))
         ctrl_bar.addWidget(btn_all)
 
         btn_none = QPushButton("Deselect All")
+        btn_none.setFixedHeight(32)
         btn_none.clicked.connect(lambda: self._set_all_install_apks(False))
         ctrl_bar.addWidget(btn_none)
 
         btn_invert = QPushButton("Invert")
+        btn_invert.setFixedHeight(32)
         btn_invert.clicked.connect(self._invert_install_selection)
         ctrl_bar.addWidget(btn_invert)
 
         btn_refresh = QPushButton("🔄 Refresh")
+        btn_refresh.setFixedHeight(32)
         btn_refresh.clicked.connect(self._rescan_apks)
         ctrl_bar.addWidget(btn_refresh)
 
         ctrl_bar.addSpacing(10)
         self.install_search_edit = QLineEdit()
+        self.install_search_edit.setFixedHeight(32)
         self.install_search_edit.setPlaceholderText("🔍 Search APKs (name, package, file)...")
         self.install_search_edit.textChanged.connect(self._filter_install_apks)
         ctrl_bar.addWidget(self.install_search_edit)
@@ -1442,23 +1447,28 @@ class AeroSuiteQtApp(QMainWindow):
         # Controls Strip
         ctrl_bar = QHBoxLayout()
         btn_all = QPushButton("Select All")
+        btn_all.setFixedHeight(32)
         btn_all.clicked.connect(lambda: self._set_all_uninstall_pkgs(True))
         ctrl_bar.addWidget(btn_all)
 
         btn_none = QPushButton("Deselect All")
+        btn_none.setFixedHeight(32)
         btn_none.clicked.connect(lambda: self._set_all_uninstall_pkgs(False))
         ctrl_bar.addWidget(btn_none)
 
         btn_invert = QPushButton("Invert")
+        btn_invert.setFixedHeight(32)
         btn_invert.clicked.connect(self._invert_uninstall_selection)
         ctrl_bar.addWidget(btn_invert)
 
         btn_refresh = QPushButton("🔄 Refresh")
+        btn_refresh.setFixedHeight(32)
         btn_refresh.clicked.connect(self._rescan_apks)
         ctrl_bar.addWidget(btn_refresh)
 
         ctrl_bar.addSpacing(10)
         self.uninstall_search_edit = QLineEdit()
+        self.uninstall_search_edit.setFixedHeight(32)
         self.uninstall_search_edit.setPlaceholderText("🔍 Search Packages to Uninstall (contains name, package)...")
         self.uninstall_search_edit.textChanged.connect(self._filter_uninstall_pkgs)
         ctrl_bar.addWidget(self.uninstall_search_edit)
@@ -1636,11 +1646,13 @@ class AeroSuiteQtApp(QMainWindow):
         # Controls & Search Strip
         ctrl_bar = QHBoxLayout()
         self.open_app_search_edit = QLineEdit()
+        self.open_app_search_edit.setFixedHeight(32)
         self.open_app_search_edit.setPlaceholderText("🔍 Search Apps to Open (name or package)...")
         self.open_app_search_edit.textChanged.connect(self._filter_open_apps)
         ctrl_bar.addWidget(self.open_app_search_edit)
 
         btn_refresh = QPushButton("🔄 Refresh")
+        btn_refresh.setFixedHeight(32)
         btn_refresh.clicked.connect(self._rescan_apks)
         ctrl_bar.addWidget(btn_refresh)
         layout.addLayout(ctrl_bar)
