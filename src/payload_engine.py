@@ -850,6 +850,33 @@ date >> "$LOG_FILE"
 mount -o remount,rw /system >> "$LOG_FILE" 2>&1
 mount -o rw,remount /system >> "$LOG_FILE" 2>&1
 
+# 0. Deep Pre-Clean: Completely wipe any existing/stale Google packages, leftover data & caches
+# Prevents signature mismatch, corrupted databases, and package manager conflicts
+echo "Executing pre-installation purge of existing Google packages & caches..." >> "$LOG_FILE"
+for pkg in com.android.vending com.google.android.gms com.google.android.gsf com.google.android.gsf.login; do
+    PKG_PATH=$(pm path "$pkg" 2>/dev/null | cut -d ':' -f 2)
+    if [ -n "$PKG_PATH" ]; then
+        echo "  Found existing package $pkg at $PKG_PATH — purging completely..." >> "$LOG_FILE"
+        rm -rf $(dirname "$PKG_PATH") >> "$LOG_FILE" 2>&1
+    fi
+    pm clear "$pkg" >> "$LOG_FILE" 2>&1
+    pm uninstall "$pkg" >> "$LOG_FILE" 2>&1
+    rm -rf "/data/data/$pkg" >> "$LOG_FILE" 2>&1
+    rm -rf "/data/user/0/$pkg" >> "$LOG_FILE" 2>&1
+    rm -rf "/data/app/$pkg"* >> "$LOG_FILE" 2>&1
+    rm -rf "/data/dalvik-cache/arm/*$pkg"* >> "$LOG_FILE" 2>&1
+done
+
+# Wipe old system directory remnants
+rm -rf /system/priv-app/*PlayStore* /system/priv-app/*playstore* /system/priv-app/*vending* >> "$LOG_FILE" 2>&1
+rm -rf /system/priv-app/*GMS* /system/priv-app/*gms* /system/priv-app/*GSF* /system/priv-app/*gsf* >> "$LOG_FILE" 2>&1
+rm -rf /system/app/*PlayStore* /system/app/*GMS* /system/app/*GSF* >> "$LOG_FILE" 2>&1
+
+# Reset corrupted account tokens and sync db to prevent auth conflict
+rm -rf /data/system/users/0/accounts.db* >> "$LOG_FILE" 2>&1
+rm -rf /data/system_de/0/accounts_de.db* >> "$LOG_FILE" 2>&1
+rm -rf /data/system/sync/* >> "$LOG_FILE" 2>&1
+
 SOFT_DIR="$USB_PATH/update/soft"
 if [ -d "$SOFT_DIR" ]; then
     for item in "$SOFT_DIR"/*; do
