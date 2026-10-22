@@ -208,7 +208,7 @@ class AeroSuiteQtApp(QMainWindow):
         brand_box.addWidget(lbl_title)
 
         lbl_badge = QLabel(f"v{theme.APP_VERSION}")
-        lbl_badge.setFixedHeight(26)
+        lbl_badge.setFixedHeight(28)
         lbl_badge.setAlignment(Qt.AlignCenter)
         lbl_badge.setStyleSheet(
             f"background-color: {theme.CYAN_ALPHA_15}; color: {theme.CYAN_PRIMARY}; "
@@ -237,7 +237,7 @@ class AeroSuiteQtApp(QMainWindow):
         self.usb_combo = QComboBox()
         self.usb_combo.setObjectName("usbCombo")
         self.usb_combo.setFixedWidth(300)
-        self.usb_combo.setFixedHeight(28)
+        self.usb_combo.setFixedHeight(32)
         self.usb_combo.setCursor(Qt.PointingHandCursor)
         self.usb_combo.setContextMenuPolicy(Qt.CustomContextMenu)
         self.usb_combo.customContextMenuRequested.connect(self._show_usb_menu)
@@ -246,7 +246,7 @@ class AeroSuiteQtApp(QMainWindow):
 
         self.btn_refresh_usb = QPushButton("🔄 Refresh")
         self.btn_refresh_usb.setObjectName("btnRefreshUsb")
-        self.btn_refresh_usb.setFixedHeight(28)
+        self.btn_refresh_usb.setFixedHeight(32)
         self.btn_refresh_usb.setFixedWidth(115)
         self.btn_refresh_usb.setCursor(Qt.PointingHandCursor)
         self.btn_refresh_usb.setToolTip("Refresh & Rescan USB Flash Drives")
@@ -255,7 +255,7 @@ class AeroSuiteQtApp(QMainWindow):
 
         self.btn_usb_settings = QPushButton("⚙️")
         self.btn_usb_settings.setObjectName("btnUsbSettings")
-        self.btn_usb_settings.setFixedSize(28, 28)
+        self.btn_usb_settings.setFixedSize(32, 32)
         self.btn_usb_settings.setCursor(Qt.PointingHandCursor)
         self.btn_usb_settings.setToolTip("Flash Drive Settings & Tools (Open in Explorer, Format FAT32, Rescan)")
         self.btn_usb_settings.clicked.connect(lambda: self._show_usb_menu(button_anchor=True))
