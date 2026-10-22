@@ -546,7 +546,9 @@ def get_application_stylesheet() -> str:
         max-height: 22px;
         height: 22px;
         text-align: center;
-        color: transparent;
+        color: #FFFFFF;
+        font-size: 11px;
+        font-weight: bold;
     }}
     QProgressBar::chunk {{
         background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #0099BB, stop:0.6 #00D2FF, stop:1 #33DCFF);

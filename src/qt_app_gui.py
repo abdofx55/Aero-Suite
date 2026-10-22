@@ -208,10 +208,12 @@ class AeroSuiteQtApp(QMainWindow):
         brand_box.addWidget(lbl_title)
 
         lbl_badge = QLabel(f"v{theme.APP_VERSION}")
+        lbl_badge.setFixedHeight(26)
+        lbl_badge.setAlignment(Qt.AlignCenter)
         lbl_badge.setStyleSheet(
             f"background-color: {theme.CYAN_ALPHA_15}; color: {theme.CYAN_PRIMARY}; "
-            f"border: 1px solid {theme.BORDER_CYAN}; border-radius: 6px; padding: 2px 7px; "
-            f"font-size: 10px; font-weight: bold;"
+            f"border: 1px solid {theme.BORDER_CYAN}; border-radius: 6px; padding: 0 10px; "
+            f"font-size: 11px; font-weight: bold;"
         )
         brand_box.addWidget(lbl_badge)
 
@@ -396,9 +398,10 @@ class AeroSuiteQtApp(QMainWindow):
         right_splitter = QSplitter(Qt.Vertical)
         right_splitter.setHandleWidth(1)
 
-        # Content Card Frame
+        # Content Card Frame (holds the active feature views without outer card border)
         content_frame = QFrame()
-        content_frame.setProperty("class", "card")
+        content_frame.setObjectName("contentPanel")
+        content_frame.setStyleSheet("QFrame#contentPanel { background-color: transparent; border: none; }")
         content_layout = QVBoxLayout(content_frame)
         content_layout.setContentsMargins(0, 0, 0, 0)
         content_layout.setSpacing(0)
@@ -437,6 +440,8 @@ class AeroSuiteQtApp(QMainWindow):
         self.progress_bar.setFixedWidth(260)
         self.progress_bar.setFixedHeight(22)
         self.progress_bar.setValue(0)
+        self.progress_bar.setTextVisible(True)
+        self.progress_bar.setFormat("%p%")
         self.progress_anim = QPropertyAnimation(self.progress_bar, b"value")
         self.progress_anim.setEasingCurve(QEasingCurve.OutQuad)
         prog_bar.addWidget(self.progress_bar)
@@ -791,6 +796,17 @@ class AeroSuiteQtApp(QMainWindow):
             return False
         return True
 
+    def _check_busy_and_warn(self) -> bool:
+        """Returns True if busy, after logging to terminal and presenting a warning modal."""
+        if self.is_busy:
+            self.log_terminal("⚠️ Operation in progress! Please wait or cancel the current operation before starting a new one.", "warn")
+            self.show_error_dialog(
+                "Operation in Progress",
+                "Another operation is currently running. Please wait for it to complete or click [CANCEL] in the progress bar before starting a new operation."
+            )
+            return True
+        return False
+
     # ---------------------------------------------------------
     # LOGGING & TERMINAL
     # ---------------------------------------------------------
@@ -1004,7 +1020,7 @@ class AeroSuiteQtApp(QMainWindow):
         self.install_scroll.setWidgetResizable(True)
         self.install_cards_container = QWidget()
         self.install_cards_layout = QVBoxLayout(self.install_cards_container)
-        self.install_cards_layout.setContentsMargins(0, 0, 0, 0)
+        self.install_cards_layout.setContentsMargins(0, 0, 10, 0)
         self.install_cards_layout.setSpacing(5)
         self.install_scroll.setWidget(self.install_cards_container)
         layout.addWidget(self.install_scroll)
@@ -1356,8 +1372,8 @@ class AeroSuiteQtApp(QMainWindow):
             self.btn_prepare_install.setEnabled(False)
 
     def _execute_prepare_install_usb(self):
+        if self._check_busy_and_warn(): return
         if not self._validate_usb_filesystem(): return
-        if self.is_busy: return
 
         selected = [a for a in self.local_apks if self.selected_install_apks.get(a["filename"], False)]
         if not selected:
@@ -1472,7 +1488,7 @@ class AeroSuiteQtApp(QMainWindow):
         self.uninstall_scroll.setWidgetResizable(True)
         self.uninstall_cards_container = QWidget()
         self.uninstall_cards_layout = QVBoxLayout(self.uninstall_cards_container)
-        self.uninstall_cards_layout.setContentsMargins(0, 0, 0, 0)
+        self.uninstall_cards_layout.setContentsMargins(0, 0, 10, 0)
         self.uninstall_cards_layout.setSpacing(4)
         self.uninstall_scroll.setWidget(self.uninstall_cards_container)
         layout.addWidget(self.uninstall_scroll)
@@ -1574,8 +1590,8 @@ class AeroSuiteQtApp(QMainWindow):
             self.btn_prepare_uninstall.setEnabled(False)
 
     def _execute_prepare_uninstall_usb(self):
+        if self._check_busy_and_warn(): return
         if not self._validate_usb_filesystem(): return
-        if self.is_busy: return
 
         selected = [pkg for pkg, state in self.selected_uninstall_pkgs.items() if state]
         if not selected:
@@ -1653,7 +1669,7 @@ class AeroSuiteQtApp(QMainWindow):
         self.open_app_scroll.setWidgetResizable(True)
         self.open_app_container = QWidget()
         self.open_app_layout = QVBoxLayout(self.open_app_container)
-        self.open_app_layout.setContentsMargins(0, 0, 0, 0)
+        self.open_app_layout.setContentsMargins(0, 0, 10, 0)
         self.open_app_layout.setSpacing(4)
         self.open_app_scroll.setWidget(self.open_app_container)
         layout.addWidget(self.open_app_scroll)
@@ -1744,8 +1760,8 @@ class AeroSuiteQtApp(QMainWindow):
         self._render_open_app_rows()
 
     def _execute_prepare_open_app_usb(self):
+        if self._check_busy_and_warn(): return
         if not self._validate_usb_filesystem(): return
-        if self.is_busy: return
 
         selected_app_info = next((a for a in self.local_apks if a["filename"] == self.selected_open_app_filename), None)
         if not selected_app_info:
@@ -1815,8 +1831,8 @@ class AeroSuiteQtApp(QMainWindow):
         return view
 
     def _execute_open_settings(self):
+        if self._check_busy_and_warn(): return
         if not self._validate_usb_filesystem(): return
-        if self.is_busy: return
 
         letter = self.current_usb.letter
         confirm_msg = (
@@ -1875,8 +1891,8 @@ class AeroSuiteQtApp(QMainWindow):
         return view
 
     def _execute_install_gms(self):
+        if self._check_busy_and_warn(): return
         if not self._validate_usb_filesystem(): return
-        if self.is_busy: return
 
         letter = self.current_usb.letter
         confirm_msg = (
@@ -1935,8 +1951,8 @@ class AeroSuiteQtApp(QMainWindow):
         return view
 
     def _execute_uninstall_gms(self):
+        if self._check_busy_and_warn(): return
         if not self._validate_usb_filesystem(): return
-        if self.is_busy: return
 
         letter = self.current_usb.letter
         confirm_msg = (
@@ -1995,8 +2011,8 @@ class AeroSuiteQtApp(QMainWindow):
         return view
 
     def _execute_disable_launcher(self):
+        if self._check_busy_and_warn(): return
         if not self._validate_usb_filesystem(): return
-        if self.is_busy: return
 
         letter = self.current_usb.letter
         confirm_msg = (
@@ -2051,8 +2067,8 @@ class AeroSuiteQtApp(QMainWindow):
         return view
 
     def _execute_enable_launcher(self):
+        if self._check_busy_and_warn(): return
         if not self._validate_usb_filesystem(): return
-        if self.is_busy: return
 
         letter = self.current_usb.letter
         confirm_msg = f"Are you sure you want to restore the Factory Launcher on drive {letter}?"
@@ -2104,8 +2120,8 @@ class AeroSuiteQtApp(QMainWindow):
         return view
 
     def _execute_reboot_screen(self):
+        if self._check_busy_and_warn(): return
         if not self._validate_usb_filesystem(): return
-        if self.is_busy: return
 
         letter = self.current_usb.letter
         confirm_msg = f"Are you sure you want to prepare Screen Reboot USB on drive {letter}?"
@@ -2207,8 +2223,8 @@ class AeroSuiteQtApp(QMainWindow):
             self.btn_sync.setText("📥 NO VEHICLE BACKUP DETECTED ON USB DRIVE")
 
     def _execute_prepare_backup_usb(self):
+        if self._check_busy_and_warn(): return
         if not self._validate_usb_filesystem(): return
-        if self.is_busy: return
 
         letter = self.current_usb.letter
         confirm_msg = (
@@ -2228,8 +2244,8 @@ class AeroSuiteQtApp(QMainWindow):
         )
 
     def _execute_sync_to_pc(self):
+        if self._check_busy_and_warn(): return
         if not self._check_usb_ready(): return
-        if self.is_busy: return
 
         letter = self.current_usb.letter
         confirm_msg = f"Sync vehicle backup from USB drive {letter} to PC Vault ({BACKUPS_DIR})?"
@@ -2317,8 +2333,8 @@ class AeroSuiteQtApp(QMainWindow):
         self._update_restore_button_state()
 
     def _execute_restore(self):
+        if self._check_busy_and_warn(): return
         if not self._validate_usb_filesystem(): return
-        if self.is_busy: return
 
         backup_path = self.restore_combo.currentData()
         if not backup_path or not os.path.exists(backup_path):
@@ -2380,8 +2396,8 @@ class AeroSuiteQtApp(QMainWindow):
         return view
 
     def _execute_factory_reset(self):
+        if self._check_busy_and_warn(): return
         if not self._validate_usb_filesystem(): return
-        if self.is_busy: return
 
         letter = self.current_usb.letter
         confirm_msg = (
@@ -2441,8 +2457,8 @@ class AeroSuiteQtApp(QMainWindow):
         return view
 
     def _execute_fetch_logs(self):
+        if self._check_busy_and_warn(): return
         if not self._validate_usb_filesystem(): return
-        if self.is_busy: return
 
         letter = self.current_usb.letter
         confirm_msg = f"Prepare Fetch Logs USB payload on drive {letter}?"
