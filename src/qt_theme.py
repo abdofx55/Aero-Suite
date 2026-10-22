@@ -306,7 +306,7 @@ def get_application_stylesheet() -> str:
         color: {theme.TEXT_PRIMARY};
         border: 1px solid {theme.BORDER_SLATE};
         border-radius: 4px;
-        padding: 1px 16px 1px 6px;
+        padding: 1px 13px 1px 4px;
         font-size: 11px;
         font-weight: 500;
         min-height: 20px;

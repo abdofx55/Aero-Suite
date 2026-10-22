@@ -996,25 +996,6 @@ class AeroSuiteQtApp(QMainWindow):
         ctrl_bar.addWidget(self.install_search_edit)
         layout.addLayout(ctrl_bar)
 
-        # Global Partition Target Strip
-        part_bar = QHBoxLayout()
-        lbl_target = QLabel("Global Target Partition:")
-        lbl_target.setStyleSheet(f"font-size: 11px; color: {theme.TEXT_MUTED};")
-        part_bar.addWidget(lbl_target)
-
-        btn_all_user = QPushButton("Set All: User App")
-        btn_all_user.setStyleSheet("font-size: 11px; padding: 4px 10px;")
-        btn_all_user.clicked.connect(lambda: self._set_global_target("user"))
-        part_bar.addWidget(btn_all_user)
-
-        btn_all_sys = QPushButton("Set All: System App")
-        btn_all_sys.setStyleSheet("font-size: 11px; padding: 4px 10px;")
-        btn_all_sys.clicked.connect(lambda: self._set_global_target("system"))
-        part_bar.addWidget(btn_all_sys)
-
-        part_bar.addStretch()
-        layout.addLayout(part_bar)
-
         # Scroll Area for APK Cards
         self.install_scroll = QScrollArea()
         self.install_scroll.setWidgetResizable(True)
@@ -1151,10 +1132,10 @@ class AeroSuiteQtApp(QMainWindow):
             c_layout.addWidget(chk_boot)
             c_layout.addSpacing(14)
 
-            # Target Dropdown (User App / System App) - compact height 22px, subtle outline, width 86px
+            # Target Dropdown (User App / System App) - compact height 22px, subtle outline, width 92px
             combo_target = QComboBox()
             combo_target.setObjectName("comboTarget")
-            combo_target.setFixedWidth(86)
+            combo_target.setFixedWidth(92)
             combo_target.setFixedHeight(22)
             combo_target.setCursor(Qt.PointingHandCursor)
             combo_target.addItems(["User App", "System App"])
