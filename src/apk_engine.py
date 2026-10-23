@@ -320,10 +320,11 @@ def patch_apk(input_apk_path: str, output_apk_path: str, log_func=None, target_o
                     if item.filename == "AndroidManifest.xml":
                         z_out.writestr(item, manifest_data)
                     else:
-                        z_out.writestr(item, z_in.read(item.filename))
+                        z_out.writestr(item, z_in.read(item.filename), compress_type=item.compress_type)
             
-            # Automatically apply Android v1 signature so the patched APK installs cleanly
+            # Automatically apply Android v1 signature and 4096-byte page alignment
             sign_apk(output_apk_path, log_func=log_func)
+            zipalign_apk(output_apk_path, log_func=log_func)
         else:
             shutil.copy2(input_apk_path, output_apk_path)
 
@@ -427,9 +428,10 @@ def sign_apk(apk_path: str, log_func=None) -> bool:
             for item in z_in.infolist():
                 if item.filename.startswith("META-INF/"):
                     continue
-                z_out.writestr(item, z_in.read(item.filename))
+                z_out.writestr(item, z_in.read(item.filename), compress_type=item.compress_type)
 
         shutil.move(temp_apk, apk_path)
+        zipalign_apk(apk_path, log_func=log_func)
         _log("  [OK] APK signed successfully (v1 signature applied).")
         return True
     except Exception as e:
@@ -437,6 +439,97 @@ def sign_apk(apk_path: str, log_func=None) -> bool:
         if os.path.exists(temp_apk):
             try:
                 os.remove(temp_apk)
+            except Exception:
+                pass
+        return False
+
+
+def zipalign_apk(apk_path: str, log_func=None) -> bool:
+    """
+    Performs 4096-byte page alignment on uncompressed native libraries (.so)
+    and 4-byte alignment on uncompressed resources using pure Python.
+    Prevents 'INSTALL_FAILED_INVALID_APK: Failed to extract native libraries, res=-2'
+    on Android 8.1/9 when android:extractNativeLibs='false'.
+    """
+    def _log(msg):
+        if log_func:
+            log_func(msg)
+
+    aligned_apk = apk_path + ".aligned.tmp"
+    try:
+        import struct
+        with zipfile.ZipFile(apk_path, 'r') as z_in, open(apk_path, 'rb') as f_raw, open(aligned_apk, 'wb') as f_out:
+            entries = []
+            for info in z_in.infolist():
+                f_raw.seek(info.header_offset + 26)
+                fn_len, extra_len = struct.unpack('<HH', f_raw.read(4))
+                data_start = info.header_offset + 30 + fn_len + extra_len
+                f_raw.seek(data_start)
+                raw_data = f_raw.read(info.compress_size)
+                entries.append((info, raw_data))
+
+            central_dir_entries = []
+            for info, raw_data in entries:
+                header_offset = f_out.tell()
+                fname_bytes = info.filename.encode('utf-8')
+                align = 4
+                if info.filename.endswith('.so') and info.compress_type == zipfile.ZIP_STORED:
+                    align = 4096
+                elif info.compress_type != zipfile.ZIP_STORED:
+                    align = 1
+
+                base_header_len = 30 + len(fname_bytes)
+                existing_extra = info.extra or b''
+                unaligned_data_offset = header_offset + base_header_len + len(existing_extra)
+                padding_len = (align - (unaligned_data_offset % align)) % align if align > 1 else 0
+                extra = existing_extra + (b'\x00' * padding_len)
+
+                header = struct.pack(
+                    '<IHHHHHIIIHH',
+                    0x04034b50, info.extract_version, info.flag_bits, info.compress_type,
+                    info.date_time[3] << 11 | info.date_time[4] << 5 | info.date_time[5] // 2,
+                    (info.date_time[0] - 1980) << 9 | info.date_time[1] << 5 | info.date_time[2],
+                    info.CRC, info.compress_size, info.file_size, len(fname_bytes), len(extra)
+                )
+                f_out.write(header)
+                f_out.write(fname_bytes)
+                f_out.write(extra)
+                f_out.write(raw_data)
+                central_dir_entries.append((info, fname_bytes, extra, header_offset))
+
+            cd_start = f_out.tell()
+            for info, fname_bytes, extra, header_offset in central_dir_entries:
+                cd_header = struct.pack(
+                    '<IHHHHHHIIIHHHHHII',
+                    0x02014b50, info.create_version, info.extract_version, info.flag_bits, info.compress_type,
+                    info.date_time[3] << 11 | info.date_time[4] << 5 | info.date_time[5] // 2,
+                    (info.date_time[0] - 1980) << 9 | info.date_time[1] << 5 | info.date_time[2],
+                    info.CRC, info.compress_size, info.file_size, len(fname_bytes), len(extra),
+                    len(info.comment or b''), 0, info.internal_attr, info.external_attr, header_offset
+                )
+                f_out.write(cd_header)
+                f_out.write(fname_bytes)
+                f_out.write(extra)
+                if info.comment:
+                    f_out.write(info.comment)
+
+            cd_end = f_out.tell()
+            cd_size = cd_end - cd_start
+            eocd = struct.pack(
+                '<IHHHHIIH',
+                0x06054b50, 0, 0, len(central_dir_entries), len(central_dir_entries),
+                cd_size, cd_start, 0
+            )
+            f_out.write(eocd)
+
+        shutil.move(aligned_apk, apk_path)
+        _log("  [OK] APK zipaligned (native libraries 4096-byte page aligned).")
+        return True
+    except Exception as e:
+        _log(f"  [!] Failed to zipalign APK: {e}")
+        if os.path.exists(aligned_apk):
+            try:
+                os.remove(aligned_apk)
             except Exception:
                 pass
         return False
