@@ -78,7 +78,7 @@ class TerminalWidget(QWidget):
         text = self.terminal_edit.toPlainText()
         if text:
             QApplication.clipboard().setText(text)
-            self.log_message("Logs copied to clipboard.", "mint")
+            self.log_message(t("terminal.copied", "Logs copied to clipboard."), "mint")
 
     def clear_logs(self):
         """Clears the terminal output."""

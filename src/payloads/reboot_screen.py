@@ -6,6 +6,7 @@ import os
 import time
 from core.constants import SIGNATURE_BANNER
 from core.exceptions import log_exception
+from core.i18n import t
 from payloads.base import clean_usb_drive, write_script_file
 
 
@@ -20,7 +21,7 @@ def prepare_reboot_screen_usb(
         if log_func:
             log_func(msg)
 
-    _log(f"\n── [9/13] Preparing Restart Infotainment Screen USB: {usb_drive} ──")
+    _log(t("logs.prep_usb_header", f"\n── [9/13] Preparing Restart Infotainment Screen USB: {usb_drive} ──", num="9", title=t("nav.reboot_screen_title", "Restart Screen"), drive=usb_drive))
     if not os.path.exists(usb_drive):
         _log(f"  ✗ USB Drive not found: {usb_drive}")
         return False
@@ -105,7 +106,7 @@ This utility provides an instant, safe hardware-level reboot for the infotainmen
             time.sleep(0.04)
             progress_func(1.0, "Reboot Screen USB ready!", 0.0, 0, 0)
 
-        _log("✓ Restart Infotainment Screen USB prepared successfully.")
+        _log(t("logs.prep_usb_success", "✓ Restart Infotainment Screen USB prepared successfully.", title=t("nav.reboot_screen_title", "Restart Screen")))
         return True
     except Exception as e:
         log_exception(e, "prepare_reboot_screen_usb")

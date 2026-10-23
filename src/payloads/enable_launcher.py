@@ -6,6 +6,7 @@ import os
 import time
 from core.constants import SIGNATURE_BANNER, FACTORY_LAUNCHER_PKG
 from core.exceptions import log_exception
+from core.i18n import t
 from payloads.base import clean_usb_drive, write_script_file
 
 
@@ -20,7 +21,7 @@ def prepare_enable_launcher_usb(
         if log_func:
             log_func(msg)
 
-    _log(f"\n── [8/13] Preparing Enable Factory Launcher USB: {usb_drive} ──")
+    _log(t("logs.prep_usb_header", f"\n── [8/13] Preparing Enable Factory Launcher USB: {usb_drive} ──", num="8", title=t("nav.enable_launcher_title", "Enable Launcher"), drive=usb_drive))
     if not os.path.exists(usb_drive):
         _log(f"  ✗ USB Drive not found: {usb_drive}")
         return False
@@ -114,7 +115,7 @@ This payload restores and unfreezes the stock factory launcher:
             time.sleep(0.04)
             progress_func(1.0, "Enable Launcher USB ready!", 0.0, 0, 0)
 
-        _log("✓ Enable Launcher USB prepared successfully.")
+        _log(t("logs.prep_usb_success", "✓ Enable Launcher USB prepared successfully.", title=t("nav.enable_launcher_title", "Enable Launcher")))
         return True
     except Exception as e:
         log_exception(e, "prepare_enable_launcher_usb")

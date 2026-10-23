@@ -48,7 +48,7 @@ class SideNavWidget(QFrame):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("sideBar")
-        self.setFixedWidth(260)
+        self.setFixedWidth(290)
         self.feature_buttons = {}
         self.category_labels = []
         self.current_feature = None
@@ -56,7 +56,7 @@ class SideNavWidget(QFrame):
 
     def _build_ui(self):
         sidebar_layout = QVBoxLayout(self)
-        sidebar_layout.setContentsMargins(8, 12, 8, 12)
+        sidebar_layout.setContentsMargins(6, 12, 6, 12)
         sidebar_layout.setSpacing(6)
 
         nav_scroll = QScrollArea()
@@ -65,7 +65,7 @@ class SideNavWidget(QFrame):
 
         nav_widget = QWidget()
         self.nav_layout = QVBoxLayout(nav_widget)
-        self.nav_layout.setContentsMargins(0, 0, 4, 0)
+        self.nav_layout.setContentsMargins(8, 0, 8, 0)
         self.nav_layout.setSpacing(4)
 
         categories = get_feature_categories()
@@ -90,7 +90,7 @@ class SideNavWidget(QFrame):
                 item_btn.setCursor(Qt.PointingHandCursor)
 
                 ib_layout = QHBoxLayout(item_btn)
-                ib_layout.setContentsMargins(10, 4, 10, 4)
+                ib_layout.setContentsMargins(12, 4, 12, 4)
                 ib_layout.setSpacing(8)
 
                 icon_lbl = QLabel(feat_icon)
@@ -154,11 +154,12 @@ class SideNavWidget(QFrame):
             is_danger = (fid == "factory_reset")
 
             if is_active:
+                accent_border = "border-right: 3px solid" if fr.isRightToLeft() else "border-left: 3px solid"
                 fr.setStyleSheet(f"""
                     QFrame#{obj_name} {{
                         background-color: {theme.CYAN_ALPHA_15};
                         border: 1px solid {theme.CYAN_PRIMARY};
-                        border-left: 3px solid {theme.CYAN_PRIMARY};
+                        {accent_border} {theme.CYAN_PRIMARY};
                         border-radius: 8px;
                     }}
                 """)

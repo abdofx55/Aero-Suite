@@ -171,7 +171,7 @@ class OpenAppView(QWidget):
         confirm_title = t("open_app.confirm_title", "Confirm Launch Application USB")
         confirm_msg = t("open_app.confirm_msg", letter=letter, app_title=app_title, pkg=pkg)
         from ui.components.dialogs import show_confirm_dialog
-        if not show_confirm_dialog(self, confirm_title, confirm_msg, confirm_text="🚀 Prepare Launch USB"):
+        if not show_confirm_dialog(self, confirm_title, confirm_msg, confirm_text=t("open_app.btn_confirm", "🚀 Prepare Launch USB")):
             return
 
         import payload_engine

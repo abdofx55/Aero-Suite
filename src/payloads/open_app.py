@@ -7,6 +7,7 @@ import re
 import time
 from core.constants import SIGNATURE_BANNER
 from core.exceptions import log_exception
+from core.i18n import t
 from payloads.base import clean_usb_drive, write_script_file
 
 
@@ -24,7 +25,7 @@ def prepare_open_app_usb(
             log_func(msg)
 
     display_label = app_name or package_name
-    _log(f"\n── [3/13] Preparing Open App USB ({display_label}): {usb_drive} ──")
+    _log(t("logs.prep_usb_header", f"\n── [3/13] Preparing Open App USB ({display_label}): {usb_drive} ──", num="3", title=f"{t('nav.open_app_title', 'Open App')} ({display_label})", drive=usb_drive))
     if not os.path.exists(usb_drive):
         _log(f"  ✗ USB Drive not found: {usb_drive}")
         return False
@@ -126,7 +127,7 @@ This payload launches the selected application directly:
             time.sleep(0.04)
             progress_func(1.0, f"Launch {display_label} USB ready!", 0.0, 0, 0)
 
-        _log(f"✓ Open App USB prepared successfully for {display_label}.")
+        _log(t("logs.prep_usb_success", f"✓ Open App USB prepared successfully for {display_label}.", title=f"{t('nav.open_app_title', 'Open App')} ({display_label})"))
         return True
     except Exception as e:
         log_exception(e, "prepare_open_app_usb")

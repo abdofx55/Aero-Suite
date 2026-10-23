@@ -6,6 +6,7 @@ import os
 import time
 from core.constants import FACTORY_PRIV_APPS, FACTORY_APPS, SIGNATURE_BANNER
 from core.exceptions import log_exception
+from core.i18n import t
 from payloads.base import clean_usb_drive, write_script_file, copy_tree_with_progress
 
 
@@ -21,7 +22,7 @@ def prepare_factory_reset_usb(
         if log_func:
             log_func(msg)
 
-    _log(f"\n── [12/13] Preparing Factory Reset USB (Zero-Trace Purge): {usb_drive} ──")
+    _log(t("logs.prep_usb_header", f"\n── [12/13] Preparing Factory Reset USB (Zero-Trace Purge): {usb_drive} ──", num="12", title=t("nav.factory_reset_title", "Factory Reset"), drive=usb_drive))
     if not os.path.exists(usb_drive):
         _log(f"  ✗ USB Drive not found: {usb_drive}")
         return False
@@ -266,7 +267,7 @@ Ideal for returning the vehicle to the dealership with zero detected modificatio
             time.sleep(0.04)
             progress_func(1.0, "Factory Reset USB ready!", 0.0, 0, 0)
 
-        _log("✓ Factory Reset USB prepared successfully.")
+        _log(t("logs.prep_usb_success", "✓ Factory Reset USB prepared successfully.", title=t("nav.factory_reset_title", "Factory Reset")))
         return True
     except Exception as e:
         log_exception(e, "prepare_factory_reset_usb")

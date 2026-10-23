@@ -6,6 +6,7 @@ import os
 import time
 from core.constants import SIGNATURE_BANNER
 from core.exceptions import log_exception
+from core.i18n import t
 from payloads.base import clean_usb_drive, write_script_file
 
 
@@ -20,7 +21,7 @@ def prepare_fetch_logs_usb(
         if log_func:
             log_func(msg)
 
-    _log(f"\n── [13/13] Preparing Fetch Logs USB: {usb_drive} ──")
+    _log(t("logs.prep_usb_header", f"\n── [13/13] Preparing Fetch Logs USB: {usb_drive} ──", num="13", title=t("nav.fetch_logs_title", "Fetch Logs"), drive=usb_drive))
     if not os.path.exists(usb_drive):
         _log(f"  ✗ USB Drive not found: {usb_drive}")
         return False
@@ -132,7 +133,7 @@ Extracted Diagnostic Data:
             time.sleep(0.04)
             progress_func(1.0, "Fetch Logs USB ready!", 0.0, 0, 0)
 
-        _log("✓ Fetch Logs USB prepared successfully.")
+        _log(t("logs.prep_usb_success", "✓ Fetch Logs USB prepared successfully.", title=t("nav.fetch_logs_title", "Fetch Logs")))
         return True
     except Exception as e:
         log_exception(e, "prepare_fetch_logs_usb")

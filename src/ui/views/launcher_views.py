@@ -59,7 +59,7 @@ class DisableLauncherView(QWidget):
 
         letter = self.main_app.current_usb.letter
         confirm_msg = t("disable_launcher.confirm_msg", letter=letter)
-        if not show_confirm_dialog(self, t("disable_launcher.confirm_title"), confirm_msg, confirm_text="🚫 Disable Launcher", is_danger=True):
+        if not show_confirm_dialog(self, t("disable_launcher.confirm_title"), confirm_msg, confirm_text=t("disable_launcher.btn_confirm", "🚫 Disable Launcher"), is_danger=True):
             return
 
         import payload_engine
@@ -122,7 +122,7 @@ class EnableLauncherView(QWidget):
 
         letter = self.main_app.current_usb.letter
         confirm_msg = t("enable_launcher.confirm_msg", letter=letter)
-        if not show_confirm_dialog(self, t("enable_launcher.confirm_title"), confirm_msg, confirm_text="✅ Enable Launcher"):
+        if not show_confirm_dialog(self, t("enable_launcher.confirm_title"), confirm_msg, confirm_text=t("enable_launcher.btn_confirm", "✅ Enable Launcher")):
             return
 
         import payload_engine

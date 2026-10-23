@@ -22,7 +22,14 @@
     "open_explorer": "📂 在资源管理器中打开",
     "rescan_drives": "🔄 重新扫描移动存储设备",
     "no_usb_detected": "未检测到可用的 U 盘",
-    "multiple_drives_warn": "⚠️ 检测到多个移动存储设备 ({count} 个)！请在下拉列表中确认目标 U 盘。"
+    "multiple_drives_warn": "⚠️ 检测到多个移动存储设备 ({count} 个)！请在下拉列表中确认目标 U 盘。",
+    "no_drive_selected": "未选择驱动器",
+    "no_drive_selected_msg": "请先选择有效的USB闪存盘。",
+    "op_in_progress": "操作正在进行中",
+    "op_in_progress_msg": "当前正在执行一项操作。请等待完成或先取消该操作。",
+    "preparation_failed": "准备失败",
+    "sync_failed": "同步失败",
+    "error": "错误"
   },
   "categories": {
     "applications_control": "应用与系统控制",
@@ -86,7 +93,8 @@
     "confirm_title": "确认制作应用安装 U 盘",
     "confirm_msg": "您确定要在驱动器 {letter} 上制作应用安装 U 盘吗？\n\n待安装应用程序列表 ({count}):\n{apps_list}{auto_info}\n\n系统将复制安装包并在 U 盘中写入针对东风车机深度定制的自动化安装脚本。",
     "success_title": "安装 U 盘制作完成",
-    "success_msg": "已成功在驱动器 {letter} 上制作完成应用安装 U 盘！\n\n现在您可以安全拔出 U 盘并插入车机使用。"
+    "success_msg": "已成功在驱动器 {letter} 上制作完成应用安装 U 盘！\n\n现在您可以安全拔出 U 盘并插入车机使用。",
+    "btn_confirm": "⚡ 准备安装U盘"
   },
   "uninstall_apps": {
     "view_title": "🛡 安全卸载车机应用",
@@ -98,7 +106,8 @@
     "confirm_title": "确认制作安全卸载 U 盘",
     "confirm_msg": "您确定要在驱动器 {letter} 上制作安全卸载 U 盘吗？\n\n待卸载应用列表 ({count}):\n{apps_list}\n\n插入车辆后，脚本将安全、深度地从用户分区和系统分区中彻底抹除这些应用。",
     "success_title": "安全卸载 U 盘制作完成",
-    "success_msg": "已成功在驱动器 {letter} 上制作完成安全卸载 U 盘！\n\n请安全弹出并插入车机。"
+    "success_msg": "已成功在驱动器 {letter} 上制作完成安全卸载 U 盘！\n\n请安全弹出并插入车机。",
+    "btn_confirm": "🗑 准备卸载U盘"
   },
   "open_app": {
     "view_title": "🚀 在车机屏幕上调出指定应用",
@@ -110,7 +119,8 @@
     "confirm_title": "确认制作启动调出 U 盘",
     "confirm_msg": "确定在驱动器 {letter} 上制作调出 U 盘吗？\n\n• 目标应用：{app_title}\n• 应用包名：{pkg}\n\n插入车辆后，车机无需重启即可瞬间将该应用唤醒至屏幕前台。",
     "success_title": "调出 U 盘制作完成",
-    "success_msg": "已成功为应用“{app_title}”在驱动器 {letter} 上制作完成调出 U 盘！"
+    "success_msg": "已成功为应用“{app_title}”在驱动器 {letter} 上制作完成调出 U 盘！",
+    "btn_confirm": "🚀 准备启动U盘"
   },
   "open_settings": {
     "view_title": "⚙️ 调出原生安卓系统设置",
@@ -119,7 +129,8 @@
     "confirm_title": "确认制作原生设置 U 盘",
     "confirm_msg": "确定要在驱动器 {letter} 上制作打开原生设置 U 盘吗？\n\n插入车辆后将立即直接调出原生安卓设置界面。",
     "success_title": "设置 U 盘制作完成",
-    "success_msg": "已成功在驱动器 {letter} 上制作完成打开原生设置 U 盘！"
+    "success_msg": "已成功在驱动器 {letter} 上制作完成打开原生设置 U 盘！",
+    "btn_confirm": "⚙️ 准备设置U盘"
   },
   "install_gms": {
     "view_title": "🌐 注入谷歌服务框架 (GMS)",
@@ -128,7 +139,8 @@
     "confirm_title": "确认安装谷歌服务套件",
     "confirm_msg": "确定要在驱动器 {letter} 上制作谷歌服务安装 U 盘吗？\n\n系统将按照精准的底层依赖顺序 (1_框架 -> 2_核心服务 -> 3_登录组件 -> 4_应用商店) 打包部署。",
     "success_title": "谷歌服务 U 盘制作就绪",
-    "success_msg": "已成功在驱动器 {letter} 上制作完成谷歌服务安装 U 盘！\n\n请安全弹出并插入车机。"
+    "success_msg": "已成功在驱动器 {letter} 上制作完成谷歌服务安装 U 盘！\n\n请安全弹出并插入车机。",
+    "btn_confirm": "🌐 准备谷歌服务U盘"
   },
   "uninstall_gms": {
     "view_title": "🧹 彻底清除谷歌服务与账户",
@@ -137,7 +149,8 @@
     "confirm_title": "确认清除谷歌服务",
     "confirm_msg": "确定要在驱动器 {letter} 上制作谷歌清除 U 盘吗？\n\n脚本将彻底从车机底层卸载谷歌框架并擦除相关账户数据库。",
     "success_title": "清除 U 盘制作就绪",
-    "success_msg": "已成功在驱动器 {letter} 上制作完成谷歌清除 U 盘！"
+    "success_msg": "已成功在驱动器 {letter} 上制作完成谷歌清除 U 盘！",
+    "btn_confirm": "🧹 准备移除U盘"
   },
   "disable_launcher": {
     "view_title": "🚫 冻结原厂中控桌面",
@@ -146,7 +159,8 @@
     "confirm_title": "确认冻结原厂桌面",
     "confirm_msg": "确定要在驱动器 {letter} 上制作冻结原厂桌面 U 盘吗？\n\n请确保车机已预先安装好备用第三方桌面。",
     "success_title": "冻结桌面 U 盘制作完成",
-    "success_msg": "已成功在驱动器 {letter} 上制作完成冻结原厂桌面 U 盘！"
+    "success_msg": "已成功在驱动器 {letter} 上制作完成冻结原厂桌面 U 盘！",
+    "btn_confirm": "🚫 禁用原厂桌面"
   },
   "enable_launcher": {
     "view_title": "✅ 恢复原厂中控桌面",
@@ -155,7 +169,8 @@
     "confirm_title": "确认恢复原厂桌面",
     "confirm_msg": "确定要在驱动器 {letter} 上制作恢复原厂桌面 U 盘吗？",
     "success_title": "恢复桌面 U 盘制作完成",
-    "success_msg": "已成功在驱动器 {letter} 上制作完成恢复原厂桌面 U 盘！"
+    "success_msg": "已成功在驱动器 {letter} 上制作完成恢复原厂桌面 U 盘！",
+    "btn_confirm": "✅ 启用原厂桌面"
   },
   "reboot_screen": {
     "view_title": "🔄 快速安全重启车机屏幕",
@@ -164,7 +179,8 @@
     "confirm_title": "确认制作重启车机 U 盘",
     "confirm_msg": "确定要在驱动器 {letter} 上制作重启车机 U 盘吗？",
     "success_title": "重启 U 盘制作完成",
-    "success_msg": "已成功在驱动器 {letter} 上制作完成重启车机 U 盘！"
+    "success_msg": "已成功在驱动器 {letter} 上制作完成重启车机 U 盘！",
+    "btn_confirm": "🔄 准备重启U盘"
   },
   "backup": {
     "view_title": "💾 车机系统与用户数据备份",
@@ -181,7 +197,9 @@
     "success_title": "备份 U 盘制作完成",
     "success_msg": "已成功在驱动器 {letter} 上制作完成备份导出 U 盘！",
     "sync_success_title": "同步归档完成",
-    "sync_success_msg": "已成功将车机备份同步归档至电脑安全库！"
+    "sync_success_msg": "已成功将车机备份同步归档至电脑安全库！",
+    "btn_confirm": "💾 准备备份U盘",
+    "btn_sync_confirm": "📥 同步到电脑"
   },
   "restore": {
     "view_title": "📥 从电脑安全库还原车机",
@@ -192,7 +210,8 @@
     "confirm_title": "确认制作数据还原 U 盘",
     "confirm_msg": "确定使用备份存档“{backup_name}”在驱动器 {letter} 上制作还原 U 盘吗？",
     "success_title": "还原 U 盘制作完成",
-    "success_msg": "已成功在驱动器 {letter} 上制作完成数据还原 U 盘！"
+    "success_msg": "已成功在驱动器 {letter} 上制作完成数据还原 U 盘！",
+    "btn_confirm": "📥 准备恢复U盘"
   },
   "factory_reset": {
     "view_title": "⚠️ 无痕深度恢复出厂设置 (回厂保修无忧)",
@@ -201,7 +220,8 @@
     "confirm_title": "确认恢复出厂设置",
     "confirm_msg": "严重警告：\n\n您确定要在驱动器 {letter} 上制作无痕恢复出厂 U 盘吗？\n\n该操作将清除车机上的所有后装第三方软件、谷歌服务、账号信息与个性化设置。",
     "success_title": "恢复出厂 U 盘制作就绪",
-    "success_msg": "已成功在驱动器 {letter} 上制作完成恢复出厂 U 盘！"
+    "success_msg": "已成功在驱动器 {letter} 上制作完成恢复出厂 U 盘！",
+    "btn_confirm": "⚠️ 准备重置U盘"
   },
   "fetch_logs": {
     "view_title": "📋 导出车机诊断与崩溃日志",
@@ -210,6 +230,47 @@
     "confirm_title": "确认制作日志抓取 U 盘",
     "confirm_msg": "确定要在驱动器 {letter} 上制作日志抓取 U 盘吗？",
     "success_title": "日志抓取 U 盘制作完成",
-    "success_msg": "已成功在驱动器 {letter} 上制作完成诊断日志抓取 U 盘！"
+    "success_msg": "已成功在驱动器 {letter} 上制作完成诊断日志抓取 U 盘！",
+    "btn_confirm": "📋 准备日志U盘"
+  },
+  "format_usb": {
+    "confirm_title": "确认格式化U盘 (FAT32)",
+    "confirm_msg": "警告：格式化将清除 {letter} 上的所有数据！\n\n目标驱动器：{letter} ({label})\n文件系统：FAT32 [AERO_USB]\n\n您确定要现在格式化此U盘吗？",
+    "btn_confirm": "⚠️ 格式化为 FAT32",
+    "incompatible_title": "不兼容的文件系统",
+    "incompatible_msg": "驱动器 {letter} 的格式为 {fs_type}。\n\n东风奕炫车机系统需要 FAT32 格式才能稳定识别U盘。\n\n是否立即将此驱动器格式化为 FAT32？",
+    "btn_format_now": "⚡ 格式化 FAT32",
+    "success_title": "格式化完成",
+    "success_msg": "驱动器 {letter} 已成功格式化为 FAT32 [AERO_USB]！",
+    "error_title": "格式化失败"
+  },
+  "logs": {
+    "app_initialized": "Aero Suite v{version} 初始化成功。",
+    "repo_indexed": "官方应用仓库：已索引 {count} 个应用程序。",
+    "rescanned_repo": "重新扫描 apks/ 仓库。总计：{count} 个安装包。",
+    "lang_changed": "界面语言已切换为：{lang_code} ({lang_name})",
+    "backup_detected": "在 {letter} 上检测到车辆备份（日期：{date}）。可随时同步到电脑库。",
+    "operation_success": "操作成功完成！",
+    "error_occurred": "错误：{msg}",
+    "cancelling": "正在取消操作，请稍候...",
+    "cancelled_by_user": "操作已被用户取消。",
+    "payload_failed": "执行载荷失败。",
+    "copied_clipboard": "系统日志已成功复制到剪贴板。",
+    "auto_launch_disabled_reboot": "由于系统应用需要重启车机，已取消 '{app_name}' 的自动启动。",
+    "auto_launch_conflict_paused": "安装已暂停：系统应用需要重启车机，这与自动启动冲突。请调整配置。",
+    "auto_launch_target_set": "已设置自动启动目标应用：{app_name} ({pkg})",
+    "auto_launch_skipped_not_selected": "注意：未勾选安装自动启动应用 '{app_name}'；将跳过自动启动。",
+    "cleaning_usb": "正在清理目标U盘：{drive}...",
+    "clean_completed": "  ✓ 已清理 {count} 个用户文件及目录。",
+    "prep_usb_header": "\n── [{num}/13] 正在准备 {title} U盘: {drive} ──",
+    "prep_usb_success": "✓ {title} U盘准备完成。",
+    "sync_header": "\n── 正在将车载备份从 {drive} 同步到电脑库: {dest} ──",
+    "sync_success": "✓ 备份已成功同步至电脑库！",
+    "format_start": "\n── 正在格式化U盘：{drive} (FAT32) ──",
+    "format_details": "卷标：{label} | 目标文件系统：FAT32",
+    "format_success": "✓ 驱动器 {drive} 已成功格式化为 FAT32 [卷标: {label}]",
+    "format_failed": "  ✗ 格式化失败：{err}",
+    "staging_apks": "正在暂存 {count} 个选定的 APK 应用（共计 {mb} MB）及自定义参数...",
+    "prep_install_summary": "✓ 安装应用U盘制作成功（{user_count} 个用户应用，{sys_count} 个系统应用）。"
   }
 }

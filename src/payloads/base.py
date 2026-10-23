@@ -19,6 +19,7 @@ from core.constants import (
     DEVELOPER_PHONE
 )
 from core.exceptions import log_exception, log_to_file
+from core.i18n import t
 from sync_manager import copy_tree_with_progress, copy_file_with_chunk_progress
 from apk_engine import patch_apk
 
@@ -59,7 +60,7 @@ def clean_usb_drive(
         _log("  ⚠ Clean cancelled.")
         return False
 
-    _log(f"  Cleaning target USB drive: {usb_drive}...")
+    _log(t("logs.cleaning_usb", f"  Cleaning target USB drive: {usb_drive}...", drive=usb_drive))
     if not os.path.exists(usb_drive) or usb_drive.strip().upper().startswith("C:"):
         _log("  ⚠ Safety block: aborting clean on invalid or root system drive.")
         return False
@@ -187,8 +188,8 @@ def format_usb_drive(
         _log("Format cancelled before start.", "warn")
         return False
 
-    _log(f"── Formatting USB Drive: {letter}:\\ ({fs}) ──", "warn")
-    _log(f"Volume Label: {label} | Target FileSystem: {fs}", "dim")
+    _log(t("logs.format_start", f"\n── Formatting USB Drive: {letter}:\\ ({fs}) ──", drive=f"{letter}:\\"), "warn")
+    _log(t("logs.format_details", f"Volume Label: {label} | Target FileSystem: {fs}", label=label), "dim")
     if progress_func:
         progress_func(0.1, f"Initializing format on {letter}:\\ ({fs})...")
 
@@ -219,7 +220,7 @@ def format_usb_drive(
         if proc.returncode == 0:
             if progress_func:
                 progress_func(1.0, f"Drive {letter}:\\ formatted successfully ({fs}).")
-            _log(f"✓ Drive {letter}:\\ successfully formatted to {fs} [Label: {label}]", "mint")
+            _log(t("logs.format_success", f"✓ Drive {letter}:\\ successfully formatted to {fs} [Label: {label}]", drive=f"{letter}:\\", label=label), "mint")
             time.sleep(0.5)
             return True
         else:

@@ -103,7 +103,7 @@ class BackupView(QWidget):
 
         letter = self.main_app.current_usb.letter
         confirm_msg = t("backup.confirm_msg", letter=letter)
-        if not show_confirm_dialog(self, t("backup.confirm_title"), confirm_msg, confirm_text="💾 Prepare Backup USB"):
+        if not show_confirm_dialog(self, t("backup.confirm_title"), confirm_msg, confirm_text=t("backup.btn_confirm", "💾 Prepare Backup USB")):
             return
 
         import payload_engine
@@ -124,7 +124,7 @@ class BackupView(QWidget):
 
         letter = self.main_app.current_usb.letter
         confirm_msg = t("backup.confirm_sync_msg", letter=letter, vault_dir=self.backups_dir)
-        if not show_confirm_dialog(self, t("backup.confirm_sync_title"), confirm_msg, confirm_text="📥 Sync to PC"):
+        if not show_confirm_dialog(self, t("backup.confirm_sync_title"), confirm_msg, confirm_text=t("backup.btn_sync_confirm", "📥 Sync to PC")):
             return
 
         from sync_manager import sync_backup_from_usb_to_pc

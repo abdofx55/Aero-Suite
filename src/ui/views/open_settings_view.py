@@ -61,7 +61,7 @@ class OpenSettingsView(QWidget):
         confirm_title = t("open_settings.confirm_title", "Confirm Settings USB")
         confirm_msg = t("open_settings.confirm_msg", letter=letter)
         from ui.components.dialogs import show_confirm_dialog
-        if not show_confirm_dialog(self, confirm_title, confirm_msg, confirm_text="⚙️ Prepare Settings USB"):
+        if not show_confirm_dialog(self, confirm_title, confirm_msg, confirm_text=t("open_settings.btn_confirm", "⚙️ Prepare Settings USB")):
             return
 
         import payload_engine

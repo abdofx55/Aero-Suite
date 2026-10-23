@@ -59,7 +59,7 @@ class FetchLogsView(QWidget):
 
         letter = self.main_app.current_usb.letter
         confirm_msg = t("fetch_logs.confirm_msg", letter=letter)
-        if not show_confirm_dialog(self, t("fetch_logs.confirm_title"), confirm_msg, confirm_text="📋 Prepare Logs USB"):
+        if not show_confirm_dialog(self, t("fetch_logs.confirm_title"), confirm_msg, confirm_text=t("fetch_logs.btn_confirm", "📋 Prepare Logs USB")):
             return
 
         import payload_engine

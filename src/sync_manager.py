@@ -7,6 +7,7 @@ import re
 import time
 import shutil
 import datetime
+from core.i18n import t
 
 
 def calculate_dir_size(directory: str) -> tuple:
@@ -343,7 +344,7 @@ def sync_backup_from_usb_to_pc(usb_drive: str, pc_vault_root: str, progress_call
 
         dest_folder = os.path.join(pc_vault_root, folder_name)
         os.makedirs(dest_folder, exist_ok=True)
-        _log(f"\n── Syncing Car Backup to Local Vault ──")
+        _log(t("logs.sync_header", f"\n── Syncing Car Backup from {usb_drive} to PC Vault: {dest_folder} ──", drive=usb_drive, dest=dest_folder))
         _log(f"  Type:         {'🌐 Community Shared Preset' if b_type == 'COMMUNITY' else '🔒 Personal Private Vault'}")
         if p_name:
             _log(f"  Preset:       {p_name}")
@@ -378,7 +379,7 @@ def sync_backup_from_usb_to_pc(usb_drive: str, pc_vault_root: str, progress_call
         except Exception:
             pass
 
-        _log(f"✓ Backup sync completed successfully! Saved to: {dest_folder}")
+        _log(t("logs.sync_success", "✓ Backup successfully synced to PC Vault!"))
         return dest_folder
     else:
         _log("✗ Backup sync failed or was cancelled.")

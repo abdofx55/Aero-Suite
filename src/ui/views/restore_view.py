@@ -98,7 +98,7 @@ class RestoreView(QWidget):
 
         letter = self.main_app.current_usb.letter
         confirm_msg = t("restore.confirm_msg", letter=letter, backup_name=os.path.basename(backup_path))
-        if not show_confirm_dialog(self, t("restore.confirm_title"), confirm_msg, confirm_text="📥 Prepare Restore USB"):
+        if not show_confirm_dialog(self, t("restore.confirm_title"), confirm_msg, confirm_text=t("restore.btn_confirm", "📥 Prepare Restore USB")):
             return
 
         import payload_engine

@@ -8,6 +8,7 @@ import time
 import tempfile
 from core.constants import SIGNATURE_BANNER
 from core.exceptions import log_exception
+from core.i18n import t
 from payloads.base import clean_usb_drive, write_script_file, extract_so_libs, copy_file_with_chunk_progress, patch_apk
 
 
@@ -31,7 +32,7 @@ def prepare_install_apps_usb(
         if log_func:
             log_func(msg)
 
-    _log(f"\n── [1/13] Preparing Install Apps USB: {usb_drive} ──")
+    _log(t("logs.prep_usb_header", f"\n── [1/13] Preparing Install Apps USB: {usb_drive} ──", num="1", title=t("nav.install_apps_title", "Install Apps"), drive=usb_drive))
     if not os.path.exists(usb_drive):
         _log(f"  ✗ USB Drive not found: {usb_drive}")
         return False
@@ -60,7 +61,7 @@ def prepare_install_apps_usb(
         if total_bytes <= 0:
             total_bytes = 1
 
-        _log(f"  Staging {total_apks} selected APK(s) ({total_bytes / (1024 * 1024):.1f} MB total) with custom parameters...")
+        _log(t("logs.staging_apks", f"  Staging {total_apks} selected APK(s) ({total_bytes / (1024 * 1024):.1f} MB total) with custom parameters...", count=total_apks, mb=f"{total_bytes / (1024 * 1024):.1f}"))
 
         system_app_count = 0
         user_app_count = 0
@@ -354,7 +355,7 @@ The automated payload script executes an intelligent dual-target deployment pipe
             time.sleep(0.04)
             progress_func(1.0, "Install Apps USB ready!", 0.0, total_bytes / (1024 * 1024), total_bytes / (1024 * 1024))
 
-        _log(f"✓ Install Apps USB prepared successfully ({user_app_count} User Apps, {system_app_count} System Apps).")
+        _log(t("logs.prep_install_summary", f"✓ Install Apps USB prepared successfully ({user_app_count} User Apps, {system_app_count} System Apps).", user_count=user_app_count, sys_count=system_app_count))
         return True
     except Exception as e:
         log_exception(e, "prepare_install_apps_usb")

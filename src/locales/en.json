@@ -22,7 +22,14 @@
     "open_explorer": "📂 Open in Windows Explorer",
     "rescan_drives": "🔄 Rescan Removable Drives",
     "no_usb_detected": "NO USB FLASH DETECTED",
-    "multiple_drives_warn": "⚠️ Multiple removable drives detected ({count} drives)! Please verify the target USB drive selected in the dropdown."
+    "multiple_drives_warn": "⚠️ Multiple removable drives detected ({count} drives)! Please verify the target USB drive selected in the dropdown.",
+    "no_drive_selected": "No Drive Selected",
+    "no_drive_selected_msg": "Please select a valid USB flash drive first.",
+    "op_in_progress": "Operation in Progress",
+    "op_in_progress_msg": "An operation is currently running. Please wait or cancel it first.",
+    "preparation_failed": "Preparation Failed",
+    "sync_failed": "Sync Failed",
+    "error": "Error"
   },
   "categories": {
     "applications_control": "APPLICATIONS & CONTROL",
@@ -86,7 +93,8 @@
     "confirm_title": "Confirm Application Installation USB",
     "confirm_msg": "Are you sure you want to prepare Application Installation USB on drive {letter}?\n\nSelected Applications to Install ({count}):\n{apps_list}{auto_info}\n\nThis will copy the packages and write automated vehicle installation scripts to the USB drive.",
     "success_title": "Install Apps USB Ready",
-    "success_msg": "Successfully prepared Install Applications USB on drive {letter}!\n\nSafely unplug and insert into vehicle."
+    "success_msg": "Successfully prepared Install Applications USB on drive {letter}!\n\nSafely unplug and insert into vehicle.",
+    "btn_confirm": "⚡ Prepare Install USB"
   },
   "uninstall_apps": {
     "view_title": "🛡 SAFE UNINSTALL APPS",
@@ -98,7 +106,8 @@
     "confirm_title": "Confirm Safe Uninstall USB",
     "confirm_msg": "Are you sure you want to prepare Safe Uninstall USB on drive {letter}?\n\nSelected Applications to Remove ({count}):\n{apps_list}\n\nWhen plugged into the vehicle, the payload will safely purge these applications from both User and System partitions.",
     "success_title": "Safe Uninstall USB Ready",
-    "success_msg": "Successfully prepared Safe Uninstall USB on drive {letter}!\n\nSafely unplug and insert into vehicle."
+    "success_msg": "Successfully prepared Safe Uninstall USB on drive {letter}!\n\nSafely unplug and insert into vehicle.",
+    "btn_confirm": "🗑 Prepare Uninstall USB"
   },
   "open_app": {
     "view_title": "🚀 LAUNCH APPLICATION ON CAR",
@@ -110,7 +119,8 @@
     "confirm_title": "Confirm Launch Application USB",
     "confirm_msg": "Are you sure you want to prepare Launch USB on drive {letter}?\n\n• Target Application: {app_title}\n• Package Name: {pkg}\n\nWhen plugged into the vehicle, this payload brings {app_title} to the foreground immediately.",
     "success_title": "Launch USB Ready",
-    "success_msg": "Successfully prepared Launch USB for '{app_title}' on drive {letter}!"
+    "success_msg": "Successfully prepared Launch USB for '{app_title}' on drive {letter}!",
+    "btn_confirm": "🚀 Prepare Launch USB"
   },
   "open_settings": {
     "view_title": "⚙️ OPEN NATIVE ANDROID SETTINGS",
@@ -119,7 +129,8 @@
     "confirm_title": "Confirm Settings USB",
     "confirm_msg": "Are you sure you want to prepare Open Android Settings USB on drive {letter}?\n\nWhen inserted into the vehicle, this payload immediately launches native Android Settings.",
     "success_title": "Settings USB Ready",
-    "success_msg": "Successfully prepared Open Android Settings USB on drive {letter}!"
+    "success_msg": "Successfully prepared Open Android Settings USB on drive {letter}!",
+    "btn_confirm": "⚙️ Prepare Settings USB"
   },
   "install_gms": {
     "view_title": "🌐 GOOGLE PLAY SERVICES SETUP",
@@ -128,7 +139,8 @@
     "confirm_title": "Confirm Google Services Installation",
     "confirm_msg": "Are you sure you want to prepare Google Play Services USB on drive {letter}?\n\nThis will package the integrated Google Play Services suite, native runtime libraries, and voice permissions for your vehicle in calibrated order.",
     "success_title": "Google Services USB Ready",
-    "success_msg": "Successfully prepared Google Play Services USB on drive {letter}!\n\nSafely unplug and insert into vehicle."
+    "success_msg": "Successfully prepared Google Play Services USB on drive {letter}!\n\nSafely unplug and insert into vehicle.",
+    "btn_confirm": "🌐 Prepare GMS USB"
   },
   "uninstall_gms": {
     "view_title": "🧹 REMOVE GOOGLE PLAY SERVICES",
@@ -137,7 +149,8 @@
     "confirm_title": "Confirm Google Services Removal",
     "confirm_msg": "Are you sure you want to prepare Google Services Removal USB on drive {letter}?\n\nThis will prepare a script to safely purge Google Play Services and clean associated account data from your car screen.",
     "success_title": "GMS Removal USB Ready",
-    "success_msg": "Successfully prepared GMS Removal USB on drive {letter}!"
+    "success_msg": "Successfully prepared GMS Removal USB on drive {letter}!",
+    "btn_confirm": "🧹 Prepare Removal USB"
   },
   "disable_launcher": {
     "view_title": "🚫 DISABLE FACTORY LAUNCHER",
@@ -146,7 +159,8 @@
     "confirm_title": "Confirm Disable Factory Launcher",
     "confirm_msg": "Are you sure you want to disable the Factory Launcher on drive {letter}?\n\nEnsure you have an alternative launcher installed on the car screen.",
     "success_title": "Disable Launcher USB Ready",
-    "success_msg": "Successfully prepared payload on drive {letter}!"
+    "success_msg": "Successfully prepared payload on drive {letter}!",
+    "btn_confirm": "🚫 Disable Launcher"
   },
   "enable_launcher": {
     "view_title": "✅ ENABLE FACTORY LAUNCHER",
@@ -155,7 +169,8 @@
     "confirm_title": "Confirm Enable Factory Launcher",
     "confirm_msg": "Are you sure you want to restore the Factory Launcher on drive {letter}?",
     "success_title": "Enable Launcher USB Ready",
-    "success_msg": "Successfully prepared payload on drive {letter}!"
+    "success_msg": "Successfully prepared payload on drive {letter}!",
+    "btn_confirm": "✅ Enable Launcher"
   },
   "reboot_screen": {
     "view_title": "🔄 RESTART INFOTAINMENT SCREEN",
@@ -164,7 +179,8 @@
     "confirm_title": "Confirm Restart Screen",
     "confirm_msg": "Are you sure you want to prepare Screen Reboot USB on drive {letter}?",
     "success_title": "Reboot USB Ready",
-    "success_msg": "Successfully prepared reboot payload on drive {letter}!"
+    "success_msg": "Successfully prepared reboot payload on drive {letter}!",
+    "btn_confirm": "🔄 Prepare Reboot USB"
   },
   "backup": {
     "view_title": "💾 SYSTEM & DATA BACKUP",
@@ -181,7 +197,9 @@
     "success_title": "Backup USB Ready",
     "success_msg": "Successfully prepared Backup payload on drive {letter}!",
     "sync_success_title": "Sync Complete",
-    "sync_success_msg": "Successfully synced vehicle backup archive to PC Vault!"
+    "sync_success_msg": "Successfully synced vehicle backup archive to PC Vault!",
+    "btn_confirm": "💾 Prepare Backup USB",
+    "btn_sync_confirm": "📥 Sync to PC"
   },
   "restore": {
     "view_title": "📥 RESTORE VEHICLE FROM BACKUP",
@@ -192,7 +210,8 @@
     "confirm_title": "Confirm Restore USB",
     "confirm_msg": "Prepare Restore USB on drive {letter} using backup '{backup_name}'?",
     "success_title": "Restore USB Ready",
-    "success_msg": "Successfully prepared Restore USB on drive {letter}!"
+    "success_msg": "Successfully prepared Restore USB on drive {letter}!",
+    "btn_confirm": "📥 Prepare Restore USB"
   },
   "factory_reset": {
     "view_title": "⚠️ ZERO-TRACE FACTORY RESET",
@@ -201,7 +220,8 @@
     "confirm_title": "Confirm Factory Reset",
     "confirm_msg": "CRITICAL WARNING:\n\nAre you sure you want to prepare ZERO-TRACE FACTORY RESET USB on drive {letter}?\n\nThis will wipe all user-installed applications, Google services, accounts, and custom data from the car screen.",
     "success_title": "Factory Reset USB Ready",
-    "success_msg": "Successfully prepared Factory Reset payload on drive {letter}!"
+    "success_msg": "Successfully prepared Factory Reset payload on drive {letter}!",
+    "btn_confirm": "⚠️ Prepare Reset USB"
   },
   "fetch_logs": {
     "view_title": "📋 FETCH DIAGNOSTIC LOGS",
@@ -210,6 +230,47 @@
     "confirm_title": "Confirm Fetch Logs",
     "confirm_msg": "Prepare Fetch Logs USB payload on drive {letter}?",
     "success_title": "Logs USB Ready",
-    "success_msg": "Successfully prepared Fetch Logs payload on drive {letter}!"
+    "success_msg": "Successfully prepared Fetch Logs payload on drive {letter}!",
+    "btn_confirm": "📋 Prepare Logs USB"
+  },
+  "format_usb": {
+    "confirm_title": "Confirm USB Format (FAT32)",
+    "confirm_msg": "WARNING: FORMATTING WILL ERASE ALL DATA ON {letter}!\n\nTarget Drive: {letter} ({label})\nFile System: FAT32 [AERO_USB]\n\nAre you completely sure you want to format this drive now?",
+    "btn_confirm": "⚠️ FORMAT TO FAT32",
+    "incompatible_title": "Incompatible File System",
+    "incompatible_msg": "Drive {letter} is formatted as {fs_type}.\n\nDongfeng Shine infotainment hardware requires FAT32 for reliable USB recognition.\n\nWould you like to format this drive to FAT32 now?",
+    "btn_format_now": "⚡ Format FAT32",
+    "success_title": "Format Completed",
+    "success_msg": "Drive {letter} successfully formatted to FAT32 [AERO_USB]!",
+    "error_title": "Format Failed"
+  },
+  "logs": {
+    "app_initialized": "Aero Suite v{version} initialized successfully.",
+    "repo_indexed": "Vetted APK Repository: {count} application(s) indexed.",
+    "rescanned_repo": "Rescanned apks/ repository. Total: {count} packages.",
+    "lang_changed": "Language changed to: {lang_code} ({lang_name})",
+    "backup_detected": "Car backup detected on {letter} (Date: {date}). Ready for PC Vault Sync.",
+    "operation_success": "Operation completed successfully!",
+    "error_occurred": "Error: {msg}",
+    "cancelling": "Cancelling operation, please wait...",
+    "cancelled_by_user": "Operation cancelled by user.",
+    "payload_failed": "Payload execution failed.",
+    "copied_clipboard": "Logs copied to clipboard.",
+    "auto_launch_disabled_reboot": "Auto-Launch disabled for '{app_name}' due to System App reboot requirement.",
+    "auto_launch_conflict_paused": "Installation paused: System apps require a reboot, which conflicts with Auto-Launch. Please adjust your configuration.",
+    "auto_launch_target_set": "Auto Launch target set: {app_name} ({pkg})",
+    "auto_launch_skipped_not_selected": "Note: Auto Launch app '{app_name}' was not selected for installation; Auto Launch will be skipped.",
+    "cleaning_usb": "Cleaning target USB drive: {drive}...",
+    "clean_completed": "  ✓ Cleaned {count} user file(s) and directory(s).",
+    "prep_usb_header": "\n── [{num}/13] Preparing {title} USB: {drive} ──",
+    "prep_usb_success": "✓ {title} USB prepared successfully.",
+    "sync_header": "\n── Syncing Car Backup from {drive} to PC Vault: {dest} ──",
+    "sync_success": "✓ Backup successfully synced to PC Vault!",
+    "format_start": "\n── Formatting USB Drive: {drive} (FAT32) ──",
+    "format_details": "Volume Label: {label} | Target FileSystem: FAT32",
+    "format_success": "✓ Drive {drive} successfully formatted to FAT32 [Label: {label}]",
+    "format_failed": "  ✗ Formatting failed: {err}",
+    "staging_apks": "Staging {count} selected APK(s) ({mb} MB total) with custom parameters...",
+    "prep_install_summary": "✓ Install Apps USB prepared successfully ({user_count} User Apps, {sys_count} System Apps)."
   }
 }

@@ -6,6 +6,7 @@ import os
 import time
 from core.constants import SIGNATURE_BANNER
 from core.exceptions import log_exception
+from core.i18n import t
 from payloads.base import clean_usb_drive, write_script_file
 
 
@@ -20,7 +21,7 @@ def prepare_open_settings_usb(
         if log_func:
             log_func(msg)
 
-    _log(f"\n── [4/13] Preparing Open Settings USB: {usb_drive} ──")
+    _log(t("logs.prep_usb_header", f"\n── [4/13] Preparing Open Settings USB: {usb_drive} ──", num="4", title=t("nav.open_settings_title", "Open Settings"), drive=usb_drive))
     if not os.path.exists(usb_drive):
         _log(f"  ✗ USB Drive not found: {usb_drive}")
         return False
@@ -104,7 +105,7 @@ The script bypasses the restricted proprietary Dongfeng launcher to directly lau
             time.sleep(0.04)
             progress_func(1.0, "Open Settings USB ready!", 0.0, 0, 0)
 
-        _log("✓ Open Settings USB prepared successfully.")
+        _log(t("logs.prep_usb_success", "✓ Open Settings USB prepared successfully.", title=t("nav.open_settings_title", "Open Settings")))
         return True
     except Exception as e:
         log_exception(e, "prepare_open_settings_usb")

@@ -63,7 +63,7 @@ class InstallGmsView(QWidget):
         letter = self.main_app.current_usb.letter
         confirm_title = t("install_gms.confirm_title", "Confirm Google Services Installation")
         confirm_msg = t("install_gms.confirm_msg", letter=letter)
-        if not show_confirm_dialog(self, confirm_title, confirm_msg, confirm_text="🌐 Prepare GMS USB"):
+        if not show_confirm_dialog(self, confirm_title, confirm_msg, confirm_text=t("install_gms.btn_confirm", "🌐 Prepare GMS USB")):
             return
 
         import payload_engine
@@ -128,7 +128,7 @@ class UninstallGmsView(QWidget):
         letter = self.main_app.current_usb.letter
         confirm_title = t("uninstall_gms.confirm_title", "Confirm Google Services Removal")
         confirm_msg = t("uninstall_gms.confirm_msg", letter=letter)
-        if not show_confirm_dialog(self, confirm_title, confirm_msg, confirm_text="🧹 Prepare Removal USB", is_danger=True):
+        if not show_confirm_dialog(self, confirm_title, confirm_msg, confirm_text=t("uninstall_gms.btn_confirm", "🧹 Prepare Removal USB"), is_danger=True):
             return
 
         import payload_engine

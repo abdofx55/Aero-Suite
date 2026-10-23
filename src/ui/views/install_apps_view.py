@@ -313,9 +313,9 @@ class InstallAppsView(QWidget):
 
             if msg_box.clickedButton() == btn_auto:
                 self._on_auto_launch_toggled(auto_launch_app["filename"], False)
-                self.main_app.log_terminal(f"Auto-Launch disabled for '{auto_launch_app['display_name']}' due to System App reboot requirement.", "mint")
+                self.main_app.log_terminal(t("logs.auto_launch_disabled_reboot", f"Auto-Launch disabled for '{auto_launch_app['display_name']}' due to System App reboot requirement.", app_name=auto_launch_app['display_name']), "mint")
             else:
-                self.main_app.log_terminal("Installation paused: System apps require a reboot, which conflicts with Auto-Launch. Please adjust your configuration.", "warn")
+                self.main_app.log_terminal(t("logs.auto_launch_conflict_paused", "Installation paused: System apps require a reboot, which conflicts with Auto-Launch. Please adjust your configuration."), "warn")
                 return
 
         letter = self.main_app.current_usb.letter
@@ -331,9 +331,9 @@ class InstallAppsView(QWidget):
             target_a = next((a for a in selected if a["filename"] == self.main_app.auto_launch_app_filename), None)
             if target_a and target_a.get("package"):
                 auto_launch_pkg = target_a["package"]
-                self.main_app.log_terminal(f"Auto Launch target set: {target_a['display_name']} ({auto_launch_pkg})", "mint")
+                self.main_app.log_terminal(t("logs.auto_launch_target_set", f"Auto Launch target set: {target_a['display_name']} ({auto_launch_pkg})", app_name=target_a['display_name'], pkg=auto_launch_pkg), "mint")
             else:
-                self.main_app.log_terminal(f"Note: Auto Launch app '{self.main_app.auto_launch_app_filename}' was not selected for installation; Auto Launch will be skipped.", "warn")
+                self.main_app.log_terminal(t("logs.auto_launch_skipped_not_selected", f"Note: Auto Launch app '{self.main_app.auto_launch_app_filename}' was not selected for installation; Auto Launch will be skipped.", app_name=self.main_app.auto_launch_app_filename), "warn")
 
         auto_info = f"\n\n🚀 Auto-Launch App: {self.main_app.auto_launch_app_filename}" if auto_launch_pkg else ""
         confirm_title = t("install_apps.confirm_title", "Confirm Application Installation USB")
@@ -345,7 +345,7 @@ class InstallAppsView(QWidget):
             auto_info=auto_info
         )
         from ui.components.dialogs import show_confirm_dialog
-        if not show_confirm_dialog(self, confirm_title, confirm_msg, confirm_text=t("install_apps.btn_action", "⚡ Prepare Install USB", count=len(selected), plural="")):
+        if not show_confirm_dialog(self, confirm_title, confirm_msg, confirm_text=t("install_apps.btn_confirm", "⚡ Prepare Install USB")):
             return
 
         selected_payload = []

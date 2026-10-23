@@ -6,6 +6,7 @@ import os
 import time
 from core.constants import SIGNATURE_BANNER
 from core.exceptions import log_exception
+from core.i18n import t
 from payloads.base import clean_usb_drive, write_script_file, copy_tree_with_progress
 
 
@@ -24,7 +25,7 @@ def prepare_restore_usb(
         if log_func:
             log_func(msg)
 
-    _log(f"\n── [11/13] Preparing Restore USB: {usb_drive} ──")
+    _log(t("logs.prep_usb_header", f"\n── [11/13] Preparing Restore USB: {usb_drive} ──", num="11", title=t("nav.restore_title", "Restore"), drive=usb_drive))
     if not os.path.exists(usb_drive):
         _log(f"  ✗ USB Drive not found: {usb_drive}")
         return False
@@ -629,7 +630,7 @@ The restore engine executes an exact 12-step restoration of your saved vehicle b
             time.sleep(0.04)
             progress_func(1.0, "Restore USB ready!", 0.0, 0, 0)
 
-        _log("✓ Restore USB prepared successfully.")
+        _log(t("logs.prep_usb_success", "✓ Restore USB prepared successfully.", title=t("nav.restore_title", "Restore")))
         return True
     except Exception as e:
         log_exception(e, "prepare_restore_usb")

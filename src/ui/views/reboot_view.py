@@ -59,7 +59,7 @@ class RebootScreenView(QWidget):
 
         letter = self.main_app.current_usb.letter
         confirm_msg = t("reboot_screen.confirm_msg", letter=letter)
-        if not show_confirm_dialog(self, t("reboot_screen.confirm_title"), confirm_msg, confirm_text="🔄 Prepare Reboot USB"):
+        if not show_confirm_dialog(self, t("reboot_screen.confirm_title"), confirm_msg, confirm_text=t("reboot_screen.btn_confirm", "🔄 Prepare Reboot USB")):
             return
 
         import payload_engine

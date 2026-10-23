@@ -55,6 +55,7 @@ def get_application_stylesheet() -> str:
         background-color: transparent;
         border: 1px solid transparent;
         border-radius: 8px;
+        margin: 1px 4px;
     }}
     QFrame[class="navItem"]:hover {{
         background-color: {theme.SURFACE_2};

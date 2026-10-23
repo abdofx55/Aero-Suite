@@ -60,7 +60,7 @@ class FactoryResetView(QWidget):
 
         letter = self.main_app.current_usb.letter
         confirm_msg = t("factory_reset.confirm_msg", letter=letter)
-        if not show_confirm_dialog(self, t("factory_reset.confirm_title"), confirm_msg, confirm_text="⚠️ Prepare Reset USB", is_danger=True):
+        if not show_confirm_dialog(self, t("factory_reset.confirm_title"), confirm_msg, confirm_text=t("factory_reset.btn_confirm", "⚠️ Prepare Reset USB"), is_danger=True):
             return
 
         import payload_engine

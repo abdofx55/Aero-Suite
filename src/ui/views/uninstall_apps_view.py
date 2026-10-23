@@ -230,7 +230,7 @@ class UninstallAppsView(QWidget):
         confirm_msg = t("uninstall_apps.confirm_msg", letter=letter, count=len(selected), apps_list=apps_list)
 
         from ui.components.dialogs import show_confirm_dialog
-        if not show_confirm_dialog(self, confirm_title, confirm_msg, confirm_text="🗑 Prepare Uninstall USB", is_danger=True):
+        if not show_confirm_dialog(self, confirm_title, confirm_msg, confirm_text=t("uninstall_apps.btn_confirm", "🗑 Prepare Uninstall USB"), is_danger=True):
             return
 
         import payload_engine

@@ -7,6 +7,7 @@ import re
 import time
 from core.constants import SIGNATURE_BANNER, GMS_PACKAGES_SEQUENCE
 from core.exceptions import log_exception
+from core.i18n import t
 from payloads.base import clean_usb_drive, write_script_file, extract_so_libs, copy_file_with_chunk_progress
 
 
@@ -40,7 +41,7 @@ def prepare_install_gms_usb(
         if log_func:
             log_func(msg)
 
-    _log(f"\n── [5/13] Preparing Install GMS USB: {usb_drive} ──")
+    _log(t("logs.prep_usb_header", f"\n── [5/13] Preparing Install GMS USB: {usb_drive} ──", num="5", title=t("nav.install_gms_title", "Install GMS"), drive=usb_drive))
     if not os.path.exists(usb_drive):
         _log(f"  ✗ USB Drive not found: {usb_drive}")
         return False
@@ -264,7 +265,7 @@ Note: The APK versions included here are specifically calibrated for Dongfeng Sh
             time.sleep(0.04)
             progress_func(1.0, "Install GMS USB ready!", 0.0, total_gms_bytes / (1024 * 1024), total_gms_bytes / (1024 * 1024))
 
-        _log("✓ Install GMS USB prepared successfully.")
+        _log(t("logs.prep_usb_success", "✓ Install GMS USB prepared successfully.", title=t("nav.install_gms_title", "Install GMS")))
         return True
     except Exception as e:
         log_exception(e, "prepare_install_gms_usb")

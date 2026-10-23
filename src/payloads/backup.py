@@ -6,6 +6,7 @@ import os
 import time
 from core.constants import FACTORY_PRIV_APPS, FACTORY_APPS, SIGNATURE_BANNER
 from core.exceptions import log_exception
+from core.i18n import t
 from payloads.base import clean_usb_drive, write_script_file
 
 
@@ -28,7 +29,7 @@ def prepare_backup_usb(
     if b_type_clean not in ("personal", "community"):
         b_type_clean = "personal"
 
-    _log(f"\n── [10/13] Preparing {b_type_clean.upper()} Backup USB: {usb_drive} ──")
+    _log(t("logs.prep_usb_header", f"\n── [10/13] Preparing {b_type_clean.upper()} Backup USB: {usb_drive} ──", num="10", title=t("nav.backup_title", "Backup"), drive=usb_drive))
     if b_type_clean == "community":
         _log("  Scope:       🌐 Community Shared Preset (Safe for sharing)")
         _log(f"  Preset Name: {preset_name or 'Community Preset'}")
@@ -401,7 +402,7 @@ Layers processed:
             time.sleep(0.04)
             progress_func(1.0, f"{b_type_clean.capitalize()} Backup USB ready!", 0.0, 0, 0)
 
-        _log(f"✓ {b_type_sh} Backup USB prepared successfully.")
+        _log(t("logs.prep_usb_success", f"✓ {b_type_sh} Backup USB prepared successfully.", title=t("nav.backup_title", "Backup")))
         return True
     except Exception as e:
         log_exception(e, "prepare_backup_usb")

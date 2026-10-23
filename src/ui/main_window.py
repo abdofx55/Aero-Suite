@@ -129,9 +129,9 @@ class PayloadWorker(QThread):
                 **self.kwargs
             )
             if self.cancel_event.is_set():
-                self.finished_signal.emit(False, "Operation cancelled by user.")
+                self.finished_signal.emit(False, t("logs.cancelled_by_user", "Operation cancelled by user."))
             else:
-                self.finished_signal.emit(bool(success), "" if success else "Payload execution failed.")
+                self.finished_signal.emit(bool(success), "" if success else t("logs.payload_failed", "Payload execution failed."))
         except Exception as e:
             log_exception(e, f"PayloadWorker running {getattr(self.target_func, '__name__', 'unknown')}")
             self.finished_signal.emit(False, str(e))
@@ -182,8 +182,8 @@ class AeroSuiteQtApp(QMainWindow):
         QTimer.singleShot(100, self._initial_startup_log)
 
     def _initial_startup_log(self):
-        self.log_terminal(f"Aero Suite v{theme.APP_VERSION} initialized successfully.", "cyan")
-        self.log_terminal(f"Vetted APK Repository: {len(self.local_apks)} application(s) indexed.", "mint")
+        self.log_terminal(t("logs.app_initialized", f"Aero Suite v{theme.APP_VERSION} initialized successfully.", version=theme.APP_VERSION), "cyan")
+        self.log_terminal(t("logs.repo_indexed", f"Vetted APK Repository: {len(self.local_apks)} application(s) indexed.", count=len(self.local_apks)), "mint")
         drives = get_removable_drives()
         self._on_usb_drives_changed(drives)
 
@@ -447,7 +447,7 @@ class AeroSuiteQtApp(QMainWindow):
         self.view_uninstall_apps.render_cards()
         self.view_uninstall_apps.update_action_button()
         self.view_open_app.render_rows()
-        self.log_terminal(f"Rescanned apks/ repository. Total: {len(self.local_apks)} packages.", "mint")
+        self.log_terminal(t("logs.rescanned_repo", f"Rescanned apks/ repository. Total: {len(self.local_apks)} packages.", count=len(self.local_apks)), "mint")
 
     @property
     def active_feature(self) -> str:
@@ -473,7 +473,7 @@ class AeroSuiteQtApp(QMainWindow):
     def _on_language_changed(self, lang_code: str):
         from core.i18n import get_i18n
         get_i18n().set_language(lang_code)
-        self.log_terminal(f"Language changed to: {lang_code.upper()} ({get_i18n().current_lang})", "mint")
+        self.log_terminal(t("logs.lang_changed", f"Language changed to: {lang_code.upper()} ({get_i18n().current_lang})", lang_code=lang_code.upper(), lang_name=get_i18n().current_lang), "mint")
         self.retranslate_ui()
 
     def retranslate_ui(self):
@@ -518,7 +518,7 @@ class AeroSuiteQtApp(QMainWindow):
 
         if not drives:
             self.current_usb = None
-            self.usb_combo.addItem("NO USB FLASH DETECTED")
+            self.usb_combo.addItem(t("common.no_usb_detected", "NO USB FLASH DETECTED"))
             self.usb_combo.setToolTip("Please insert a removable USB flash drive to prepare payloads.")
             self.usb_status_dot.setStyleSheet(f"color: {theme.CRIMSON_DANGER}; font-size: 16px;")
             self.usb_status_dot.setToolTip("No USB Flash Drive Detected")
@@ -541,14 +541,14 @@ class AeroSuiteQtApp(QMainWindow):
 
             if len(drives) > 1 and getattr(self, "_last_warned_drive_count", 0) != len(drives):
                 self._last_warned_drive_count = len(drives)
-                self.log_terminal(f"⚠️ Multiple removable drives detected ({len(drives)} drives)! Please verify the target USB drive selected in the dropdown.", "warn")
+                self.log_terminal(t("common.multiple_drives_warn", f"⚠️ Multiple removable drives detected ({len(drives)} drives)! Please verify the target USB drive selected in the dropdown.", count=len(drives)), "warn")
             elif len(drives) == 1:
                 self._last_warned_drive_count = 1
 
             if self.current_usb and getattr(self.current_usb, "has_backup", False):
                 if getattr(self, "_last_logged_backup_drive", None) != self.current_usb.letter:
                     self._last_logged_backup_drive = self.current_usb.letter
-                    self.log_terminal(f"Car backup detected on {self.current_usb.letter} (Date: {self.current_usb.backup_date}). Ready for PC Vault Sync.", "mint")
+                    self.log_terminal(t("logs.backup_detected", f"Car backup detected on {self.current_usb.letter} (Date: {self.current_usb.backup_date}). Ready for PC Vault Sync.", letter=self.current_usb.letter, date=self.current_usb.backup_date), "mint")
             else:
                 self._last_logged_backup_drive = None
 
@@ -579,10 +579,10 @@ class AeroSuiteQtApp(QMainWindow):
         drives = get_removable_drives()
         self._on_usb_drives_changed(drives)
         if hasattr(self, "btn_refresh_usb"):
-            self.btn_refresh_usb.setText("✓ Refreshed!")
+            self.btn_refresh_usb.setText(t("common.refreshed", "✓ Refreshed!"))
             self.btn_refresh_usb.setStyleSheet(f"color: {theme.MINT_SUCCESS};")
             QTimer.singleShot(1200, lambda: (
-                self.btn_refresh_usb.setText("🔄 Refresh"),
+                self.btn_refresh_usb.setText(t("common.refresh", "🔄 Refresh")),
                 self.btn_refresh_usb.setStyleSheet("")
             ))
 
@@ -606,14 +606,14 @@ class AeroSuiteQtApp(QMainWindow):
                 color: {theme.CYAN_PRIMARY};
             }}
         """)
-        a_open = menu.addAction("📂 Open in Windows Explorer")
+        a_open = menu.addAction(t("common.open_explorer", "📂 Open in Windows Explorer"))
         a_open.triggered.connect(self._open_usb_in_explorer)
 
-        a_fmt = menu.addAction("⚡ Format Drive (FAT32)")
+        a_fmt = menu.addAction(t("common.format_fat32", "⚡ Format Drive (FAT32)"))
         a_fmt.triggered.connect(self._format_usb_fat32)
 
         menu.addSeparator()
-        a_rescan = menu.addAction("🔄 Rescan Removable Drives")
+        a_rescan = menu.addAction(t("common.rescan_drives", "🔄 Rescan Removable Drives"))
         a_rescan.triggered.connect(self._refresh_usb_drives)
 
         if button_anchor:
@@ -624,7 +624,7 @@ class AeroSuiteQtApp(QMainWindow):
 
     def _open_usb_in_explorer(self):
         if not self.current_usb or not os.path.exists(self.current_usb.letter):
-            self.show_error_dialog("No Drive Selected", "Please select a valid USB flash drive first.")
+            self.show_error_dialog(t("common.no_drive_selected", "No Drive Selected"), t("common.no_drive_selected_msg", "Please select a valid USB flash drive first."))
             return
         os.system(f'explorer "{self.current_usb.letter}"')
 
@@ -632,37 +632,33 @@ class AeroSuiteQtApp(QMainWindow):
         if self._check_busy_and_warn():
             return
         if not self.current_usb or not os.path.exists(self.current_usb.letter):
-            self.show_error_dialog("No USB Selected", "Please select a valid USB flash drive first.")
+            self.show_error_dialog(t("common.no_drive_selected", "No USB Selected"), t("common.no_drive_selected_msg", "Please select a valid USB flash drive first."))
             return
 
         letter = self.current_usb.letter
-        confirm_msg = (
-            f"WARNING: FORMATTING WILL ERASE ALL DATA ON {letter}!\n\n"
-            f"Target Drive: {letter} ({self.current_usb.label})\n"
-            f"File System: FAT32 [AERO_USB]\n\n"
-            f"Are you completely sure you want to format this drive now?"
-        )
-        if not show_confirm_dialog(self, "Confirm USB Format (FAT32)", confirm_msg, confirm_text="⚠️ FORMAT TO FAT32", is_danger=True):
+        confirm_title = t("format_usb.confirm_title", "Confirm USB Format (FAT32)")
+        confirm_msg = t("format_usb.confirm_msg", letter=letter, label=self.current_usb.label or "USB")
+        if not show_confirm_dialog(self, confirm_title, confirm_msg, confirm_text=t("format_usb.btn_confirm", "⚠️ FORMAT TO FAT32"), is_danger=True):
             return
 
         self.execute_payload_worker(
             payload_engine.format_usb_drive,
             letter,
             volume_label="AERO_USB",
-            success_title="Format Completed",
-            success_msg=f"Drive {letter} successfully formatted to FAT32 [AERO_USB]!",
-            error_title="Format Failed"
+            success_title=t("format_usb.success_title", "Format Completed"),
+            success_msg=t("format_usb.success_msg", letter=letter),
+            error_title=t("format_usb.error_title", "Format Failed")
         )
 
     def _check_busy_and_warn(self) -> bool:
         if self.is_busy:
-            self.show_error_dialog("Operation in Progress", "An operation is currently running. Please wait or cancel it first.")
+            self.show_error_dialog(t("common.op_in_progress", "Operation in Progress"), t("common.op_in_progress_msg", "An operation is currently running. Please wait or cancel it first."))
             return True
         return False
 
     def _check_usb_ready(self) -> bool:
         if not self.current_usb:
-            self.show_error_dialog("No USB Flash Drive", "Please insert a removable USB flash drive first.")
+            self.show_error_dialog(t("common.no_drive_selected", "No USB Flash Drive"), t("common.no_drive_selected_msg", "Please insert a removable USB flash drive first."))
             return False
         return True
 
@@ -670,12 +666,9 @@ class AeroSuiteQtApp(QMainWindow):
         if not self._check_usb_ready():
             return False
         if self.current_usb.fs_type.upper() != "FAT32":
-            msg = (
-                f"Drive {self.current_usb.letter} is formatted as {self.current_usb.fs_type}.\n\n"
-                f"Dongfeng Shine infotainment hardware requires FAT32 for reliable USB recognition.\n\n"
-                f"Would you like to format this drive to FAT32 now?"
-            )
-            if show_confirm_dialog(self, "Incompatible File System", msg, confirm_text="⚡ Format FAT32", is_danger=True):
+            incompat_title = t("format_usb.incompatible_title", "Incompatible File System")
+            incompat_msg = t("format_usb.incompatible_msg", letter=self.current_usb.letter, fs_type=self.current_usb.fs_type)
+            if show_confirm_dialog(self, incompat_title, incompat_msg, confirm_text=t("format_usb.btn_format_now", "⚡ Format FAT32"), is_danger=True):
                 self._format_usb_fat32()
             return False
         return True
@@ -719,21 +712,21 @@ class AeroSuiteQtApp(QMainWindow):
             self._on_usb_drives_changed(pending)
 
         if success:
-            self.log_terminal("Operation completed successfully!", "mint")
+            self.log_terminal(t("app.operation_success", "Operation completed successfully!"), "mint")
             title = getattr(self, "_current_success_title", "Operation Succeeded")
             msg = getattr(self, "_current_success_msg", "The requested payload has been prepared.")
             show_success_dialog(self, title, msg, usb_drive=self.current_usb.letter if self.current_usb else None)
         else:
             title = getattr(self, "_current_error_title", "Operation Failed")
             msg = err_msg or "An error occurred during execution."
-            self.log_terminal(f"Error: {msg}", "crimson")
+            self.log_terminal(t("logs.error_occurred", f"Error: {msg}", msg=msg), "crimson")
             show_error_dialog(self, title, msg)
 
     def cancel_current_operation(self):
         if self.is_busy and self.current_worker:
             self.cancel_event.set()
-            self.log_terminal("Cancelling operation, please wait...", "warn")
-            self.progress_control.lbl_status.setText("Cancelling operation...")
+            self.log_terminal(t("app.cancelling", "Cancelling operation, please wait..."), "warn")
+            self.progress_control.lbl_status.setText(t("app.cancelling", "Cancelling operation..."))
             self.progress_control.btn_cancel.setEnabled(False)
 
     def show_confirm_dialog(self, title: str, text: str, confirm_text: str = "Continue", is_danger: bool = False) -> bool:
