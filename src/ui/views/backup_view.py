@@ -5,6 +5,7 @@ Allows generating non-destructive vehicle backup payloads and syncing completed 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton, QFrame
 import theme
+from core.i18n import t
 from ui.components.dialogs import show_confirm_dialog
 
 
@@ -28,22 +29,16 @@ class BackupView(QWidget):
         cp_layout.setContentsMargins(18, 16, 18, 16)
         cp_layout.setSpacing(12)
 
-        lbl_head1 = QLabel("💾 SYSTEM & DATA BACKUP")
+        lbl_head1 = QLabel(t("backup.view_title"))
         lbl_head1.setStyleSheet(f"font-size: 15px; font-weight: bold; color: {theme.CYAN_PRIMARY};")
         cp_layout.addWidget(lbl_head1)
 
-        lbl_desc1 = QLabel(
-            "Never lose your personalized setup! 💾 Saves a complete, secure snapshot of your car screen:\n\n"
-            "• 📱 All Your Apps & Accounts: Saves your installed apps, logged-in accounts, and app data.\n"
-            "• 🎨 Custom Layouts: Keeps your launcher widgets, custom icons, and favorite shortcuts intact.\n"
-            "• 📶 Saved Connections: Backs up your paired Bluetooth phones and saved Wi-Fi networks.\n"
-            "• 🔒 Total Peace of Mind: Plug the USB into your car, and it automatically extracts your backup in under a minute!"
-        )
+        lbl_desc1 = QLabel(t("backup.desc"))
         lbl_desc1.setStyleSheet(f"font-size: 11px; color: {theme.TEXT_PRIMARY}; border: none; background: transparent;")
         lbl_desc1.setWordWrap(True)
         cp_layout.addWidget(lbl_desc1)
 
-        btn_backup = QPushButton("💾 PREPARE VEHICLE BACKUP USB")
+        btn_backup = QPushButton(t("backup.btn_prepare"))
         btn_backup.setProperty("class", "btnPrimary")
         btn_backup.setFixedHeight(38)
         btn_backup.clicked.connect(self._execute_prepare_backup)
@@ -57,16 +52,16 @@ class BackupView(QWidget):
         cs_layout.setContentsMargins(18, 16, 18, 16)
         cs_layout.setSpacing(12)
 
-        lbl_head2 = QLabel("📥 SYNC USB BACKUP TO PC VAULT")
+        lbl_head2 = QLabel(t("backup.sync_title"))
         lbl_head2.setStyleSheet(f"font-size: 15px; font-weight: bold; color: {theme.MINT_SUCCESS};")
         cs_layout.addWidget(lbl_head2)
 
-        lbl_desc2 = QLabel("Safely copies your car backup from your USB drive into your PC Vault repository for permanent safekeeping.")
+        lbl_desc2 = QLabel(t("backup.sync_desc"))
         lbl_desc2.setStyleSheet(f"font-size: 11px; color: {theme.TEXT_MUTED}; border: none; background: transparent;")
         lbl_desc2.setWordWrap(True)
         cs_layout.addWidget(lbl_desc2)
 
-        self.btn_sync = QPushButton("📥 SYNC USB BACKUP TO PC VAULT")
+        self.btn_sync = QPushButton(t("backup.sync_title"))
         self.btn_sync.setProperty("class", "btnSuccess")
         self.btn_sync.setFixedHeight(38)
         self.btn_sync.clicked.connect(self._execute_sync_to_pc)
@@ -86,10 +81,10 @@ class BackupView(QWidget):
         if has_bk:
             date_str = f" ({bk_date})" if bk_date else ""
             self.btn_sync.setEnabled(True)
-            self.btn_sync.setText(f"📥 SYNC VEHICLE BACKUP TO PC VAULT{date_str}")
+            self.btn_sync.setText(t("backup.btn_sync_ready", date_str=date_str))
         else:
             self.btn_sync.setEnabled(False)
-            self.btn_sync.setText("📥 NO VEHICLE BACKUP DETECTED ON USB DRIVE")
+            self.btn_sync.setText(t("backup.btn_sync_no_backup"))
 
     def _execute_prepare_backup(self):
         if self.main_app._check_busy_and_warn():
@@ -98,11 +93,8 @@ class BackupView(QWidget):
             return
 
         letter = self.main_app.current_usb.letter
-        confirm_msg = (
-            f"Are you sure you want to prepare Vehicle Backup USB on drive {letter}?\n\n"
-            f"When inserted into the vehicle, this payload safely extracts your applications, configurations, and calibration files."
-        )
-        if not show_confirm_dialog(self, "Confirm Backup USB", confirm_msg, confirm_text="💾 Prepare Backup USB"):
+        confirm_msg = t("backup.confirm_msg", letter=letter)
+        if not show_confirm_dialog(self, t("backup.confirm_title"), confirm_msg, confirm_text="💾 Prepare Backup USB"):
             return
 
         import payload_engine
@@ -110,9 +102,9 @@ class BackupView(QWidget):
             payload_engine.prepare_backup_usb,
             letter,
             backup_type="personal",
-            success_title="Backup USB Ready",
-            success_msg=f"Successfully prepared Backup payload on drive {letter}!",
-            error_title="Backup Preparation Failed"
+            success_title=t("backup.success_title"),
+            success_msg=t("backup.success_msg", letter=letter),
+            error_title=t("common.preparation_failed")
         )
 
     def _execute_sync_to_pc(self):
@@ -122,8 +114,8 @@ class BackupView(QWidget):
             return
 
         letter = self.main_app.current_usb.letter
-        confirm_msg = f"Sync vehicle backup from USB drive {letter} to PC Vault ({self.backups_dir})?"
-        if not show_confirm_dialog(self, "Confirm Sync Backup", confirm_msg, confirm_text="📥 Sync to PC"):
+        confirm_msg = t("backup.confirm_sync_msg", letter=letter, vault_dir=self.backups_dir)
+        if not show_confirm_dialog(self, t("backup.confirm_sync_title"), confirm_msg, confirm_text="📥 Sync to PC"):
             return
 
         from sync_manager import sync_backup_from_usb_to_pc
@@ -131,7 +123,7 @@ class BackupView(QWidget):
             sync_backup_from_usb_to_pc,
             letter,
             self.backups_dir,
-            success_title="Sync Complete",
-            success_msg="Successfully synced vehicle backup archive to PC Vault!",
-            error_title="Sync Failed"
+            success_title=t("backup.sync_success_title"),
+            success_msg=t("backup.sync_success_msg"),
+            error_title=t("common.sync_failed", default="Sync Failed")
         )

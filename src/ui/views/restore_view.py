@@ -6,6 +6,7 @@ import os
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton, QComboBox, QFrame
 import theme
+from core.i18n import t
 from ui.components.dialogs import show_confirm_dialog, show_error_dialog
 from sync_manager import get_local_backups
 
@@ -29,16 +30,11 @@ class RestoreView(QWidget):
         c_layout.setContentsMargins(18, 16, 18, 16)
         c_layout.setSpacing(14)
 
-        lbl_head = QLabel("📥 RESTORE VEHICLE FROM BACKUP")
+        lbl_head = QLabel(t("restore.view_title"))
         lbl_head.setStyleSheet(f"font-size: 15px; font-weight: bold; color: {theme.CYAN_PRIMARY}; border: none; background: transparent;")
         c_layout.addWidget(lbl_head)
 
-        lbl_desc = QLabel(
-            "Get all your apps and settings back in minutes! 📥 Restores your car screen to your favorite saved backup from your PC:\n\n"
-            "• 🚀 One-Step Full Recovery: Installs all your saved apps, logins, and widget arrangements automatically.\n"
-            "• 📶 Instant Reconnection: Reconnects your Bluetooth phones and Wi-Fi networks without re-typing passwords.\n"
-            "• ⚡ Fast & Smart: Skips apps that are already on the screen to finish the restore super fast!"
-        )
+        lbl_desc = QLabel(t("restore.desc"))
         lbl_desc.setStyleSheet(f"font-size: 12px; color: {theme.TEXT_PRIMARY}; border: none; background: transparent;")
         lbl_desc.setWordWrap(True)
         c_layout.addWidget(lbl_desc)
@@ -47,7 +43,7 @@ class RestoreView(QWidget):
         self.restore_combo.currentIndexChanged.connect(lambda: self.update_restore_button_state())
         c_layout.addWidget(self.restore_combo)
 
-        self.btn_restore = QPushButton("📥 PREPARE RESTORE USB")
+        self.btn_restore = QPushButton(t("restore.btn_action"))
         self.btn_restore.setProperty("class", "btnPrimary")
         self.btn_restore.setFixedHeight(44)
         self.btn_restore.clicked.connect(self._execute_restore)
@@ -62,7 +58,7 @@ class RestoreView(QWidget):
         self.restore_combo.clear()
         backups = get_local_backups(self.backups_dir)
         if not backups:
-            self.restore_combo.addItem("No saved backups in PC Vault")
+            self.restore_combo.addItem(t("restore.empty"))
             self.restore_combo.setEnabled(False)
         else:
             for b in backups:
@@ -77,10 +73,10 @@ class RestoreView(QWidget):
         b_path = self.restore_combo.currentData()
         if b_path and os.path.exists(b_path):
             self.btn_restore.setEnabled(True)
-            self.btn_restore.setText("📥 PREPARE RESTORE USB")
+            self.btn_restore.setText(t("restore.btn_action"))
         else:
             self.btn_restore.setEnabled(False)
-            self.btn_restore.setText("⚠️ NO SAVED BACKUPS AVAILABLE IN PC VAULT")
+            self.btn_restore.setText(t("restore.btn_idle"))
 
     def _execute_restore(self):
         if self.main_app._check_busy_and_warn():
@@ -90,12 +86,12 @@ class RestoreView(QWidget):
 
         backup_path = self.restore_combo.currentData()
         if not backup_path or not os.path.exists(backup_path):
-            show_error_dialog(self, "No Backup Selected", "Please select a valid backup archive.")
+            show_error_dialog(self, t("common.error"), t("restore.empty"))
             return
 
         letter = self.main_app.current_usb.letter
-        confirm_msg = f"Prepare Restore USB on drive {letter} using backup '{os.path.basename(backup_path)}'?"
-        if not show_confirm_dialog(self, "Confirm Restore USB", confirm_msg, confirm_text="📥 Prepare Restore USB"):
+        confirm_msg = t("restore.confirm_msg", letter=letter, backup_name=os.path.basename(backup_path))
+        if not show_confirm_dialog(self, t("restore.confirm_title"), confirm_msg, confirm_text="📥 Prepare Restore USB"):
             return
 
         import payload_engine
@@ -103,7 +99,7 @@ class RestoreView(QWidget):
             payload_engine.prepare_restore_usb,
             letter,
             local_backup_folder=backup_path,
-            success_title="Restore USB Ready",
-            success_msg=f"Successfully prepared Restore USB on drive {letter}!",
-            error_title="Restore Preparation Failed"
+            success_title=t("restore.success_title"),
+            success_msg=t("restore.success_msg", letter=letter),
+            error_title=t("common.preparation_failed")
         )

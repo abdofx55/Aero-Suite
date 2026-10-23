@@ -5,6 +5,7 @@ Controls freezing and unfreezing of the Dongfeng Aeolus stock dashboard launcher
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton, QFrame
 import theme
+from core.i18n import t
 from ui.components.dialogs import show_confirm_dialog
 
 
@@ -26,22 +27,16 @@ class DisableLauncherView(QWidget):
         c_layout.setContentsMargins(18, 16, 18, 16)
         c_layout.setSpacing(14)
 
-        lbl_head = QLabel("🚫 DISABLE FACTORY LAUNCHER")
+        lbl_head = QLabel(t("disable_launcher.view_title"))
         lbl_head.setStyleSheet(f"font-size: 15px; font-weight: bold; color: {theme.CRIMSON_DANGER};")
         c_layout.addWidget(lbl_head)
 
-        lbl_desc = QLabel(
-            "Give your car a stunning, customized look! 🚫 Disables the rigid factory home screen so your favorite custom car launcher (like AGAMA or Nova) boots up instantly as your main dashboard:\n\n"
-            "• 🏎️ True Car Dashboard Feel: Modern gauges, speedometers, and customized music widgets.\n"
-            "• ⚡ Zero Screen Lag: Prevents the factory launcher from fighting for memory in the background.\n"
-            "• 🔄 100% Reversible: You can restore the original factory launcher anytime with one click!\n\n"
-            "⚠️ Note: Make sure you installed a custom launcher (e.g., AGAMA) before disabling the factory one!"
-        )
+        lbl_desc = QLabel(t("disable_launcher.desc"))
         lbl_desc.setStyleSheet(f"font-size: 12px; color: {theme.TEXT_PRIMARY}; border: none; background: transparent;")
         lbl_desc.setWordWrap(True)
         c_layout.addWidget(lbl_desc)
 
-        btn_dis = QPushButton("🚫 PREPARE DISABLE FACTORY LAUNCHER USB")
+        btn_dis = QPushButton(t("disable_launcher.btn_action"))
         btn_dis.setProperty("class", "btnDanger")
         btn_dis.setFixedHeight(44)
         btn_dis.clicked.connect(self._execute_disable_launcher)
@@ -57,20 +52,17 @@ class DisableLauncherView(QWidget):
             return
 
         letter = self.main_app.current_usb.letter
-        confirm_msg = (
-            f"Are you sure you want to disable the Factory Launcher on drive {letter}?\n\n"
-            f"Ensure you have an alternative launcher installed on the car screen."
-        )
-        if not show_confirm_dialog(self, "Confirm Disable Factory Launcher", confirm_msg, confirm_text="🚫 Disable Launcher", is_danger=True):
+        confirm_msg = t("disable_launcher.confirm_msg", letter=letter)
+        if not show_confirm_dialog(self, t("disable_launcher.confirm_title"), confirm_msg, confirm_text="🚫 Disable Launcher", is_danger=True):
             return
 
         import payload_engine
         self.main_app.execute_payload_worker(
             payload_engine.prepare_disable_launcher_usb,
             letter,
-            success_title="Disable Launcher USB Ready",
-            success_msg=f"Successfully prepared payload on drive {letter}!",
-            error_title="Preparation Failed"
+            success_title=t("disable_launcher.success_title"),
+            success_msg=t("disable_launcher.success_msg", letter=letter),
+            error_title=t("common.preparation_failed")
         )
 
 
@@ -92,18 +84,16 @@ class EnableLauncherView(QWidget):
         c_layout.setContentsMargins(18, 16, 18, 16)
         c_layout.setSpacing(14)
 
-        lbl_head = QLabel("✅ ENABLE FACTORY LAUNCHER")
+        lbl_head = QLabel(t("enable_launcher.view_title"))
         lbl_head.setStyleSheet(f"font-size: 15px; font-weight: bold; color: {theme.CYAN_PRIMARY}; border: none; background: transparent;")
         c_layout.addWidget(lbl_head)
 
-        lbl_desc = QLabel(
-            "Miss the original factory look? ✅ Restores the original Dongfeng factory home screen launcher in seconds! Simply insert the USB, and your stock dashboard interface is back up and running just like the day you bought the car."
-        )
+        lbl_desc = QLabel(t("enable_launcher.desc"))
         lbl_desc.setStyleSheet(f"font-size: 12px; color: {theme.TEXT_PRIMARY}; border: none; background: transparent;")
         lbl_desc.setWordWrap(True)
         c_layout.addWidget(lbl_desc)
 
-        btn_en = QPushButton("✅ PREPARE ENABLE FACTORY LAUNCHER USB")
+        btn_en = QPushButton(t("enable_launcher.btn_action"))
         btn_en.setProperty("class", "btnPrimary")
         btn_en.setFixedHeight(44)
         btn_en.clicked.connect(self._execute_enable_launcher)
@@ -119,15 +109,15 @@ class EnableLauncherView(QWidget):
             return
 
         letter = self.main_app.current_usb.letter
-        confirm_msg = f"Are you sure you want to restore the Factory Launcher on drive {letter}?"
-        if not show_confirm_dialog(self, "Confirm Enable Factory Launcher", confirm_msg, confirm_text="✅ Enable Launcher"):
+        confirm_msg = t("enable_launcher.confirm_msg", letter=letter)
+        if not show_confirm_dialog(self, t("enable_launcher.confirm_title"), confirm_msg, confirm_text="✅ Enable Launcher"):
             return
 
         import payload_engine
         self.main_app.execute_payload_worker(
             payload_engine.prepare_enable_launcher_usb,
             letter,
-            success_title="Enable Launcher USB Ready",
-            success_msg=f"Successfully prepared payload on drive {letter}!",
-            error_title="Preparation Failed"
+            success_title=t("enable_launcher.success_title"),
+            success_msg=t("enable_launcher.success_msg", letter=letter),
+            error_title=t("common.preparation_failed")
         )

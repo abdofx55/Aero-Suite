@@ -2,6 +2,7 @@
 install_apps_view.py — Feature 1: Install Applications View.
 Manages selection of APK packages, per-app configuration (Auto-Launch, Force Portrait,
 Block Boot Launch, Target Partition), conflict resolution, and USB preparation.
+Localized dynamically via core.i18n.
 """
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
@@ -9,6 +10,7 @@ from PySide6.QtWidgets import (
     QScrollArea, QFrame, QMessageBox
 )
 import theme
+from core.i18n import t
 from ui.components.app_card import AppCard
 
 
@@ -28,11 +30,12 @@ class InstallAppsView(QWidget):
 
         # Header Title
         title_box = QHBoxLayout()
-        lbl_vtitle = QLabel("📦 INSTALL APPLICATIONS")
-        lbl_vtitle.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {theme.CYAN_PRIMARY};")
-        title_box.addWidget(lbl_vtitle)
+        self.lbl_vtitle = QLabel(t("install_apps.view_title", "📦 INSTALL APPLICATIONS"))
+        self.lbl_vtitle.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {theme.CYAN_PRIMARY};")
+        title_box.addWidget(self.lbl_vtitle)
 
-        self.install_count_label = QLabel(f"({len(self.main_app.local_apks)} APKs available in repository)")
+        count = len(self.main_app.local_apks)
+        self.install_count_label = QLabel(t("install_apps.count_badge", f"({count} APKs available in repository)", count=count))
         self.install_count_label.setStyleSheet(
             f"font-size: 11px; color: {theme.CYAN_PRIMARY}; "
             f"background-color: {theme.CYAN_ALPHA_15}; border: 1px solid {theme.BORDER_CYAN}; "
@@ -48,10 +51,7 @@ class InstallAppsView(QWidget):
         b_layout = QVBoxLayout(banner)
         b_layout.setContentsMargins(14, 8, 14, 8)
         b_layout.setSpacing(2)
-        lbl_desc = QLabel(
-            "Select apps to install automatically via USB on your Dongfeng screen without manual setup.\n"
-            "Features Auto-Launch on complete, Force Portrait mode, and Fast Startup optimization."
-        )
+        lbl_desc = QLabel(t("install_apps.banner"))
         lbl_desc.setStyleSheet(f"font-size: 11px; color: {theme.TEXT_PRIMARY}; border: none; background: transparent;")
         lbl_desc.setWordWrap(True)
         b_layout.addWidget(lbl_desc)
@@ -59,22 +59,22 @@ class InstallAppsView(QWidget):
 
         # Controls & Search Strip
         ctrl_bar = QHBoxLayout()
-        self.btn_all = QPushButton("Select All")
+        self.btn_all = QPushButton(t("common.select_all", "Select All"))
         self.btn_all.setFixedHeight(32)
         self.btn_all.clicked.connect(lambda: self.set_all_selected(True))
         ctrl_bar.addWidget(self.btn_all)
 
-        self.btn_none = QPushButton("Deselect All")
+        self.btn_none = QPushButton(t("common.deselect_all", "Deselect All"))
         self.btn_none.setFixedHeight(32)
         self.btn_none.clicked.connect(lambda: self.set_all_selected(False))
         ctrl_bar.addWidget(self.btn_none)
 
-        self.btn_invert = QPushButton("Invert")
+        self.btn_invert = QPushButton(t("common.invert", "Invert"))
         self.btn_invert.setFixedHeight(32)
         self.btn_invert.clicked.connect(self.invert_selection)
         ctrl_bar.addWidget(self.btn_invert)
 
-        self.btn_refresh = QPushButton("🔄 Refresh")
+        self.btn_refresh = QPushButton(t("common.refresh", "🔄 Refresh"))
         self.btn_refresh.setFixedHeight(32)
         self.btn_refresh.clicked.connect(self.main_app._rescan_apks)
         ctrl_bar.addWidget(self.btn_refresh)
@@ -82,7 +82,7 @@ class InstallAppsView(QWidget):
         ctrl_bar.addSpacing(10)
         self.search_edit = QLineEdit()
         self.search_edit.setFixedHeight(32)
-        self.search_edit.setPlaceholderText("🔍 Search APKs (name, package, file)...")
+        self.search_edit.setPlaceholderText(t("install_apps.search_placeholder", "🔍 Search APKs (name, package, file)..."))
         self.search_edit.textChanged.connect(self._on_search_changed)
         ctrl_bar.addWidget(self.search_edit)
         layout.addLayout(ctrl_bar)
@@ -98,7 +98,7 @@ class InstallAppsView(QWidget):
         layout.addWidget(self.scroll)
 
         # Action Button
-        self.btn_prepare_install = QPushButton("👆 SELECT AT LEAST ONE APPLICATION TO INSTALL")
+        self.btn_prepare_install = QPushButton(t("install_apps.btn_idle", "👆 SELECT AT LEAST ONE APPLICATION TO INSTALL"))
         self.btn_prepare_install.setProperty("class", "btnPrimary")
         self.btn_prepare_install.setFixedHeight(44)
         self.btn_prepare_install.setEnabled(False)
@@ -265,10 +265,11 @@ class InstallAppsView(QWidget):
     def update_action_button(self):
         selected_count = sum(1 for v in self.main_app.selected_install_apks.values() if v)
         if selected_count > 0:
-            self.btn_prepare_install.setText(f"⚡ PREPARE INSTALL USB ({selected_count} APPLICATION{'S' if selected_count > 1 else ''} SELECTED)")
+            plural = "S" if selected_count > 1 else ""
+            self.btn_prepare_install.setText(t("install_apps.btn_action", f"⚡ PREPARE INSTALL USB ({selected_count} APPLICATION{plural} SELECTED)", count=selected_count, plural=plural))
             self.btn_prepare_install.setEnabled(True)
         else:
-            self.btn_prepare_install.setText("👆 SELECT AT LEAST ONE APPLICATION TO INSTALL")
+            self.btn_prepare_install.setText(t("install_apps.btn_idle", "👆 SELECT AT LEAST ONE APPLICATION TO INSTALL"))
             self.btn_prepare_install.setEnabled(False)
 
     def _execute_prepare_install(self):
@@ -292,21 +293,17 @@ class InstallAppsView(QWidget):
 
             msg_box = QMessageBox(self)
             msg_box.setWindowModality(Qt.WindowModal)
-            msg_box.setWindowTitle("System App & Auto-Launch Conflict")
+            msg_box.setWindowTitle(t("install_apps.conflict_title", "System App & Auto-Launch Conflict"))
             msg_box.setIcon(QMessageBox.Warning)
-            conflict_msg = (
-                f"⚠️ Conflict Detected: System Applications Require Restart\n\n"
-                f"You have selected application(s) ({sys_names}) to install as 'System App' (/system/app).\n\n"
-                f"Installing System Apps requires the infotainment screen to reboot automatically to register the system packages. "
-                f"Because the screen reboots immediately after installation, 'Auto Launch' cannot execute.\n\n"
-                f"How would you like to resolve this?\n"
-                f"  • Uncheck 'Auto Launch' from '{auto_launch_app['display_name']}' and proceed, OR\n"
-                f"  • Go back and change the target partition to 'User App'."
+            conflict_msg = t(
+                "install_apps.conflict_msg",
+                names=sys_names,
+                auto_app=auto_launch_app["display_name"]
             )
             msg_box.setText(conflict_msg)
 
-            btn_auto = msg_box.addButton("⚡ Uncheck Auto-Launch & Proceed", QMessageBox.ActionRole)
-            btn_back = msg_box.addButton("Go Back & Edit", QMessageBox.RejectRole)
+            btn_auto = msg_box.addButton(t("install_apps.btn_uncheck_auto", "⚡ Uncheck Auto-Launch & Proceed"), QMessageBox.ActionRole)
+            btn_back = msg_box.addButton(t("install_apps.btn_go_back", "Go Back & Edit"), QMessageBox.RejectRole)
 
             btn_auto.setStyleSheet(f"background-color: {theme.CYAN_PRIMARY}; color: black; font-weight: bold; padding: 6px 14px; border-radius: 6px; min-height: 20px;")
             btn_back.setStyleSheet(f"background-color: {theme.SURFACE_3}; color: {theme.TEXT_PRIMARY}; font-weight: 600; padding: 6px 14px; border: 1px solid {theme.BORDER_SLATE}; border-radius: 6px; min-height: 20px;")
@@ -339,15 +336,16 @@ class InstallAppsView(QWidget):
                 self.main_app.log_terminal(f"Note: Auto Launch app '{self.main_app.auto_launch_app_filename}' was not selected for installation; Auto Launch will be skipped.", "warn")
 
         auto_info = f"\n\n🚀 Auto-Launch App: {self.main_app.auto_launch_app_filename}" if auto_launch_pkg else ""
-        confirm_msg = (
-            f"Are you sure you want to prepare Application Installation USB on drive {letter}?\n\n"
-            f"Selected Applications to Install ({len(selected)}):\n"
-            f"{apps_list}"
-            f"{auto_info}\n\n"
-            f"This will copy the packages and write automated vehicle installation scripts to the USB drive."
+        confirm_title = t("install_apps.confirm_title", "Confirm Application Installation USB")
+        confirm_msg = t(
+            "install_apps.confirm_msg",
+            letter=letter,
+            count=len(selected),
+            apps_list=apps_list,
+            auto_info=auto_info
         )
         from ui.components.dialogs import show_confirm_dialog
-        if not show_confirm_dialog(self, "Confirm Application Installation USB", confirm_msg, confirm_text="⚡ Prepare Install USB"):
+        if not show_confirm_dialog(self, confirm_title, confirm_msg, confirm_text=t("install_apps.btn_action", "⚡ Prepare Install USB", count=len(selected), plural="")):
             return
 
         selected_payload = []
@@ -370,7 +368,7 @@ class InstallAppsView(QWidget):
             letter,
             selected_payload,
             auto_launch_package=auto_launch_pkg,
-            success_title="Install Apps USB Ready",
-            success_msg=f"Successfully prepared Install Applications USB on drive {letter}!\n\nSafely unplug and insert into vehicle.",
+            success_title=t("install_apps.success_title", "Install Apps USB Ready"),
+            success_msg=t("install_apps.success_msg", letter=letter),
             error_title="Install Apps USB Failed"
         )

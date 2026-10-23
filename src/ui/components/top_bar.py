@@ -1,6 +1,7 @@
 """
 top_bar.py — Aero Suite Top Navigation Bar Component.
-Provides IVI Studio branding, app version badge, USB drive selection, refresh, and tools menu.
+Provides IVI Studio branding, app version badge, multi-language selector (EN, AR, ZH, RU),
+USB drive selection, refresh, and tools menu.
 """
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
@@ -8,13 +9,15 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtGui import QCursor
 import theme
+from core.i18n import t, get_i18n, SUPPORTED_LANGUAGES
 
 
 class TopBarWidget(QFrame):
-    """Header panel managing brand identity and USB target selection."""
+    """Header panel managing brand identity, language selection, and USB target selection."""
     usb_selected = Signal(int)
     refresh_requested = Signal()
     menu_requested = Signal(bool)
+    language_selected = Signal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -28,9 +31,9 @@ class TopBarWidget(QFrame):
 
         # Brand & Subtitle
         brand_box = QHBoxLayout()
-        lbl_title = QLabel("⚡ AERO SUITE")
-        lbl_title.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {theme.CYAN_PRIMARY}; letter-spacing: 1px;")
-        brand_box.addWidget(lbl_title)
+        self.lbl_title = QLabel(t("app.title", "⚡ AERO SUITE"))
+        self.lbl_title.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {theme.CYAN_PRIMARY}; letter-spacing: 1px;")
+        brand_box.addWidget(self.lbl_title)
 
         lbl_badge = QLabel(f"v{theme.APP_VERSION}")
         lbl_badge.setFixedHeight(28)
@@ -42,12 +45,29 @@ class TopBarWidget(QFrame):
         )
         brand_box.addWidget(lbl_badge)
 
-        lbl_sub = QLabel("Dongfeng Shine (Aeolus D53) IVI Studio")
-        lbl_sub.setStyleSheet(f"font-size: 12px; color: {theme.TEXT_MUTED}; margin-left: 8px;")
-        brand_box.addWidget(lbl_sub)
+        self.lbl_sub = QLabel(t("app.subtitle", "Dongfeng Shine (Aeolus D53) IVI Studio"))
+        self.lbl_sub.setStyleSheet(f"font-size: 12px; color: {theme.TEXT_MUTED}; margin-left: 8px;")
+        brand_box.addWidget(self.lbl_sub)
         layout.addLayout(brand_box)
 
         layout.addStretch()
+
+        # Multi-Language Selector Dropdown
+        self.lang_combo = QComboBox()
+        self.lang_combo.setObjectName("langCombo")
+        self.lang_combo.setFixedHeight(32)
+        self.lang_combo.setFixedWidth(135)
+        self.lang_combo.setCursor(Qt.PointingHandCursor)
+        self.lang_combo.setToolTip("Select Language / اختر اللغة / 选择语言 / Выберите язык")
+
+        for code, meta in SUPPORTED_LANGUAGES.items():
+            self.lang_combo.addItem(f"{meta['flag']} {meta['native']}", userData=code)
+
+        cur_lang = get_i18n().current_lang
+        idx = list(SUPPORTED_LANGUAGES.keys()).index(cur_lang) if cur_lang in SUPPORTED_LANGUAGES else 0
+        self.lang_combo.setCurrentIndex(idx)
+        self.lang_combo.currentIndexChanged.connect(self._on_lang_changed)
+        layout.addWidget(self.lang_combo)
 
         # USB Controls Box
         usb_box = QHBoxLayout()
@@ -61,7 +81,7 @@ class TopBarWidget(QFrame):
 
         self.usb_combo = QComboBox()
         self.usb_combo.setObjectName("usbCombo")
-        self.usb_combo.setFixedWidth(300)
+        self.usb_combo.setFixedWidth(290)
         self.usb_combo.setFixedHeight(32)
         self.usb_combo.setCursor(Qt.PointingHandCursor)
         self.usb_combo.setContextMenuPolicy(Qt.CustomContextMenu)
@@ -69,7 +89,7 @@ class TopBarWidget(QFrame):
         self.usb_combo.currentIndexChanged.connect(self.usb_selected.emit)
         usb_box.addWidget(self.usb_combo)
 
-        self.btn_refresh_usb = QPushButton("🔄 Refresh")
+        self.btn_refresh_usb = QPushButton(t("common.refresh", "🔄 Refresh"))
         self.btn_refresh_usb.setObjectName("btnRefreshUsb")
         self.btn_refresh_usb.setFixedHeight(32)
         self.btn_refresh_usb.setFixedWidth(115)
@@ -87,3 +107,8 @@ class TopBarWidget(QFrame):
         usb_box.addWidget(self.btn_usb_settings)
 
         layout.addLayout(usb_box)
+
+    def _on_lang_changed(self, index: int):
+        lang_code = self.lang_combo.currentData()
+        if lang_code:
+            self.language_selected.emit(lang_code)

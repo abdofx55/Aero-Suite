@@ -1,35 +1,42 @@
 """
 side_nav.py — Aero Suite Sidebar Navigation Component.
 Categorised side navigation menu with active accent borders and status styling.
+Localized dynamically using the i18n subsystem.
 """
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QFrame, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QScrollArea
 )
 import theme
+from core.i18n import t
 
 
-FEATURE_CATEGORIES = [
-    ("APPLICATION MANAGEMENT", [
-        ("install_apps",     "📦", "Install Apps",           "Custom apps with autostart & portrait"),
-        ("uninstall_apps",   "🗑", "Safe Uninstall",         "Remove unwanted user & system apps"),
-        ("open_app",         "🚀", "Open Application",       "Launch any installed package directly"),
-        ("open_settings",    "⚙️", "Android Settings",       "Access hidden native Android settings"),
-    ]),
-    ("GOOGLE & LAUNCHER MODS", [
-        ("install_gms",      "🌐", "Google Services",        "Inject Play Store & Google Framework"),
-        ("uninstall_gms",    "🧹", "Purge Google Services",  "Clean wipe of Google framework & apps"),
-        ("disable_launcher",  "🚫", "Disable Launcher",         "Switch to custom dashboard"),
-        ("enable_launcher",   "✅", "Enable Launcher",          "Restore original dashboard"),
-        ("reboot_screen",     "🔄", "Restart Screen",           "Quick safe screen restart"),
-    ]),
-    ("BACKUP & MAINTENANCE", [
-        ("backup",            "💾", "Backup",                   "Save full car backup to PC"),
-        ("restore",           "📥", "Restore",                  "Restore saved apps & settings"),
-        ("factory_reset",     "⚠️", "Factory Reset",            "100% clean dealership reset"),
-        ("fetch_logs",        "📋", "Fetch Logs",               "Get diagnostic error logs"),
-    ])
-]
+def get_feature_categories():
+    """Returns localized category titles and feature descriptions."""
+    return [
+        (t("categories.app_management", "APPLICATION MANAGEMENT"), [
+            ("install_apps",     "📦", t("nav.install_apps_title", "Install Apps"),           t("nav.install_apps_desc", "Custom apps with autostart & portrait")),
+            ("uninstall_apps",   "🗑", t("nav.uninstall_apps_title", "Safe Uninstall"),         t("nav.uninstall_apps_desc", "Remove unwanted user & system apps")),
+            ("open_app",         "🚀", t("nav.open_app_title", "Open Application"),       t("nav.open_app_desc", "Launch any installed package directly")),
+            ("open_settings",    "⚙️", t("nav.open_settings_title", "Android Settings"),       t("nav.open_settings_desc", "Access hidden native Android settings")),
+        ]),
+        (t("categories.google_launcher", "GOOGLE & LAUNCHER MODS"), [
+            ("install_gms",      "🌐", t("nav.install_gms_title", "Google Services"),        t("nav.install_gms_desc", "Inject Play Store & Google Framework")),
+            ("uninstall_gms",    "🧹", t("nav.uninstall_gms_title", "Purge Google Services"),  t("nav.uninstall_gms_desc", "Clean wipe of Google framework & apps")),
+            ("disable_launcher",  "🚫", t("nav.disable_launcher_title", "Disable Launcher"),         t("nav.disable_launcher_desc", "Switch to custom dashboard")),
+            ("enable_launcher",   "✅", t("nav.enable_launcher_title", "Enable Launcher"),          t("nav.enable_launcher_desc", "Restore original dashboard")),
+            ("reboot_screen",     "🔄", t("nav.reboot_screen_title", "Restart Screen"),           t("nav.reboot_screen_desc", "Quick safe screen restart")),
+        ]),
+        (t("categories.backup_maintenance", "BACKUP & MAINTENANCE"), [
+            ("backup",            "💾", t("nav.backup_title", "Backup"),                   t("nav.backup_desc", "Save full car backup to PC")),
+            ("restore",           "📥", t("nav.restore_title", "Restore"),                  t("nav.restore_desc", "Restore saved apps & settings")),
+            ("factory_reset",     "⚠️", t("nav.factory_reset_title", "Factory Reset"),            t("nav.factory_reset_desc", "100% clean dealership reset")),
+            ("fetch_logs",        "📋", t("nav.fetch_logs_title", "Fetch Logs"),               t("nav.fetch_logs_desc", "Get diagnostic error logs")),
+        ])
+    ]
+
+
+FEATURE_CATEGORIES = get_feature_categories()
 
 
 class SideNavWidget(QFrame):
@@ -58,7 +65,8 @@ class SideNavWidget(QFrame):
         self.nav_layout.setContentsMargins(0, 0, 4, 0)
         self.nav_layout.setSpacing(4)
 
-        for i, (cat_title, cat_feats) in enumerate(FEATURE_CATEGORIES):
+        categories = get_feature_categories()
+        for i, (cat_title, cat_feats) in enumerate(categories):
             if i > 0:
                 sep = QFrame()
                 sep.setFrameShape(QFrame.HLine)

@@ -202,6 +202,7 @@ class AeroSuiteQtApp(QMainWindow):
         self.top_bar.usb_selected.connect(self._on_usb_selected)
         self.top_bar.refresh_requested.connect(self._refresh_usb_drives)
         self.top_bar.menu_requested.connect(self._show_usb_menu)
+        self.top_bar.language_selected.connect(self._on_language_changed)
         main_layout.addWidget(self.top_bar)
 
         # 2. Developer Bio Bar
@@ -466,6 +467,21 @@ class AeroSuiteQtApp(QMainWindow):
         elif self.selected_open_app_filename == filename:
             self.selected_open_app_filename = ""
         self.view_open_app.sync_rows()
+
+    def _on_language_changed(self, lang_code: str):
+        from core.i18n import get_i18n, t
+        get_i18n().set_language(lang_code)
+        self.log_terminal(f"Language changed to: {lang_code.upper()} ({get_i18n().current_lang})", "mint")
+        # Update top bar dynamic texts
+        self.top_bar.lbl_title.setText(t("app.title", "⚡ AERO SUITE"))
+        self.top_bar.lbl_sub.setText(t("app.subtitle", "Dongfeng Shine (Aeolus D53) IVI Studio"))
+        self.top_bar.btn_refresh_usb.setText(t("common.refresh", "🔄 Refresh"))
+        # Rerender views
+        self.view_install_apps.render_cards()
+        self.view_uninstall_apps.render_cards()
+        self.view_open_app.render_rows()
+        self.view_restore.populate_restore_combo()
+        self.view_backup.update_sync_button_state()
 
     def log_terminal(self, msg: str, level: str = "cyan"):
         self.terminal.append_log(msg, level)

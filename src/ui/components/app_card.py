@@ -65,8 +65,10 @@ class AppCard(QFrame):
 
         # Mode-specific right controls
         if self.mode == "install":
+            from core.i18n import t
+
             # Auto Launch Checkbox
-            self.chk_auto = QCheckBox("Auto Launch")
+            self.chk_auto = QCheckBox(t("card.auto_launch", "Auto Launch"))
             self.chk_auto.setCursor(Qt.PointingHandCursor)
             self.chk_auto.setStyleSheet(
                 f"font-size: 11px; font-weight: normal; color: {theme.TEXT_PRIMARY}; "
@@ -76,7 +78,7 @@ class AppCard(QFrame):
             layout.addSpacing(14)
 
             # Force Portrait Checkbox
-            self.chk_port = QCheckBox("Force Portrait")
+            self.chk_port = QCheckBox(t("card.force_portrait", "Force Portrait"))
             self.chk_port.setCursor(Qt.PointingHandCursor)
             self.chk_port.setStyleSheet(
                 f"font-size: 11px; font-weight: normal; color: {theme.TEXT_PRIMARY}; "
@@ -86,7 +88,7 @@ class AppCard(QFrame):
             layout.addSpacing(14)
 
             # Block Boot Launch Checkbox
-            self.chk_boot = QCheckBox("Block Boot Launch")
+            self.chk_boot = QCheckBox(t("card.block_boot", "Block Boot Launch"))
             self.chk_boot.setCursor(Qt.PointingHandCursor)
             self.chk_boot.setStyleSheet(
                 f"font-size: 11px; font-weight: normal; color: {theme.TEXT_PRIMARY}; "
@@ -101,8 +103,8 @@ class AppCard(QFrame):
             self.combo_target.setFixedWidth(92)
             self.combo_target.setFixedHeight(22)
             self.combo_target.setCursor(Qt.PointingHandCursor)
-            self.combo_target.addItems(["User App", "System App"])
-            self.combo_target.setToolTip("Target partition: User App (/data/app) vs System App (/system/app)")
+            self.combo_target.addItems([t("card.target_user", "User App"), t("card.target_system", "System App")])
+            self.combo_target.setToolTip(t("card.target_tooltip", "Target partition: User App (/data/app) vs System App (/system/app)"))
             layout.addWidget(self.combo_target)
             layout.addSpacing(14)
 

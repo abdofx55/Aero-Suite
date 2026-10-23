@@ -5,6 +5,7 @@ Builds the emergency wipe & auto-healing factory payload with security confirmat
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton, QFrame
 import theme
+from core.i18n import t
 from ui.components.dialogs import show_confirm_dialog
 
 
@@ -27,22 +28,16 @@ class FactoryResetView(QWidget):
         c_layout.setContentsMargins(18, 16, 18, 16)
         c_layout.setSpacing(14)
 
-        lbl_head = QLabel("⚠️ ZERO-TRACE FACTORY RESET")
+        lbl_head = QLabel(t("factory_reset.view_title"))
         lbl_head.setStyleSheet(f"font-size: 15px; font-weight: bold; color: {theme.CRIMSON_DANGER}; border: none; background: transparent;")
         c_layout.addWidget(lbl_head)
 
-        lbl_desc = QLabel(
-            "The ultimate clean slate & dealership reset! ⚠️ Restores your Dongfeng Shine screen to 100% factory-fresh condition:\n\n"
-            "• 🚗 Showroom Fresh: Wipes all added apps, Google services, and personal accounts cleanly.\n"
-            "• 🛡️ Auto-Healing Stock Apps: Automatically restores any missing original car applications from the factory archive.\n"
-            "• 🏢 100% Dealership Ready: Completely hides all modifications before dealership visits and routine maintenance.\n"
-            "• 🔒 Safe Protection: Your air conditioning, reverse cameras, and steering wheel controls remain 100% safe and untouched!"
-        )
+        lbl_desc = QLabel(t("factory_reset.desc"))
         lbl_desc.setStyleSheet(f"font-size: 12px; color: {theme.TEXT_PRIMARY}; border: none; background: transparent;")
         lbl_desc.setWordWrap(True)
         c_layout.addWidget(lbl_desc)
 
-        btn_reset = QPushButton("⚠️ PREPARE ZERO-TRACE FACTORY RESET USB")
+        btn_reset = QPushButton(t("factory_reset.btn_action"))
         btn_reset.setProperty("class", "btnDanger")
         btn_reset.setFixedHeight(44)
         btn_reset.clicked.connect(self._execute_factory_reset)
@@ -58,12 +53,8 @@ class FactoryResetView(QWidget):
             return
 
         letter = self.main_app.current_usb.letter
-        confirm_msg = (
-            f"CRITICAL WARNING:\n\n"
-            f"Are you sure you want to prepare ZERO-TRACE FACTORY RESET USB on drive {letter}?\n\n"
-            f"This will wipe all user-installed applications, Google services, accounts, and custom data from the car screen."
-        )
-        if not show_confirm_dialog(self, "Confirm Factory Reset", confirm_msg, confirm_text="⚠️ Prepare Reset USB", is_danger=True):
+        confirm_msg = t("factory_reset.confirm_msg", letter=letter)
+        if not show_confirm_dialog(self, t("factory_reset.confirm_title"), confirm_msg, confirm_text="⚠️ Prepare Reset USB", is_danger=True):
             return
 
         import payload_engine
@@ -71,7 +62,7 @@ class FactoryResetView(QWidget):
             payload_engine.prepare_factory_reset_usb,
             letter,
             local_factory_backup_dir=self.factory_backup_dir,
-            success_title="Factory Reset USB Ready",
-            success_msg=f"Successfully prepared Factory Reset payload on drive {letter}!",
-            error_title="Reset Preparation Failed"
+            success_title=t("factory_reset.success_title"),
+            success_msg=t("factory_reset.success_msg", letter=letter),
+            error_title=t("common.preparation_failed")
         )

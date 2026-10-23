@@ -5,6 +5,7 @@ Generates an on-the-fly soft restart payload without stopping the car or disconn
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton, QFrame
 import theme
+from core.i18n import t
 from ui.components.dialogs import show_confirm_dialog
 
 
@@ -26,18 +27,16 @@ class RebootScreenView(QWidget):
         c_layout.setContentsMargins(18, 16, 18, 16)
         c_layout.setSpacing(14)
 
-        lbl_head = QLabel("🔄 RESTART INFOTAINMENT SCREEN")
+        lbl_head = QLabel(t("reboot_screen.view_title"))
         lbl_head.setStyleSheet(f"font-size: 15px; font-weight: bold; color: {theme.CYAN_PRIMARY}; border: none; background: transparent;")
         c_layout.addWidget(lbl_head)
 
-        lbl_desc = QLabel(
-            "Quick screen refresh on the fly! 🔄 Restarts your infotainment screen safely in just a few seconds without turning off your engine, stopping the car, or disconnecting the vehicle battery. Perfect for clearing temporary glitches and speeding up your screen instantly!"
-        )
+        lbl_desc = QLabel(t("reboot_screen.desc"))
         lbl_desc.setStyleSheet(f"font-size: 12px; color: {theme.TEXT_PRIMARY}; border: none; background: transparent;")
         lbl_desc.setWordWrap(True)
         c_layout.addWidget(lbl_desc)
 
-        btn_rb = QPushButton("🔄 PREPARE REBOOT SCREEN USB")
+        btn_rb = QPushButton(t("reboot_screen.btn_action"))
         btn_rb.setProperty("class", "btnPrimary")
         btn_rb.setFixedHeight(44)
         btn_rb.clicked.connect(self._execute_reboot_screen)
@@ -53,15 +52,15 @@ class RebootScreenView(QWidget):
             return
 
         letter = self.main_app.current_usb.letter
-        confirm_msg = f"Are you sure you want to prepare Screen Reboot USB on drive {letter}?"
-        if not show_confirm_dialog(self, "Confirm Restart Screen", confirm_msg, confirm_text="🔄 Prepare Reboot USB"):
+        confirm_msg = t("reboot_screen.confirm_msg", letter=letter)
+        if not show_confirm_dialog(self, t("reboot_screen.confirm_title"), confirm_msg, confirm_text="🔄 Prepare Reboot USB"):
             return
 
         import payload_engine
         self.main_app.execute_payload_worker(
             payload_engine.prepare_reboot_screen_usb,
             letter,
-            success_title="Reboot USB Ready",
-            success_msg=f"Successfully prepared reboot payload on drive {letter}!",
-            error_title="Preparation Failed"
+            success_title=t("reboot_screen.success_title"),
+            success_msg=t("reboot_screen.success_msg", letter=letter),
+            error_title=t("common.preparation_failed")
         )
