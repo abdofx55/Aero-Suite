@@ -410,10 +410,10 @@ def sign_apk(apk_path: str, log_func=None) -> bool:
             .sign(key, hashes.SHA256())
         )
 
-        # 4. Generate PKCS#7 detached signature block for CERT.RSA
+        # 4. Generate PKCS#7 detached signature block for CERT.RSA without S/MIME attributes
         builder = pkcs7.PKCS7SignatureBuilder().set_data(sf_bytes)
         sig_der = builder.add_signer(cert, key, hashes.SHA256()).sign(
-            Encoding.DER, [pkcs7.PKCS7Options.DetachedSignature]
+            Encoding.DER, [pkcs7.PKCS7Options.DetachedSignature, pkcs7.PKCS7Options.NoAttributes]
         )
 
         # 5. Write everything into temp APK and replace original
