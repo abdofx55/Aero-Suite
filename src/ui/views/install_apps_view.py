@@ -51,10 +51,10 @@ class InstallAppsView(QWidget):
         b_layout = QVBoxLayout(banner)
         b_layout.setContentsMargins(14, 8, 14, 8)
         b_layout.setSpacing(2)
-        lbl_desc = QLabel(t("install_apps.banner"))
-        lbl_desc.setStyleSheet(f"font-size: 11px; color: {theme.TEXT_PRIMARY}; border: none; background: transparent;")
-        lbl_desc.setWordWrap(True)
-        b_layout.addWidget(lbl_desc)
+        self.lbl_desc = QLabel(t("install_apps.banner"))
+        self.lbl_desc.setStyleSheet(f"font-size: 11px; color: {theme.TEXT_PRIMARY}; border: none; background: transparent;")
+        self.lbl_desc.setWordWrap(True)
+        b_layout.addWidget(self.lbl_desc)
         layout.addWidget(banner)
 
         # Controls & Search Strip
@@ -372,3 +372,17 @@ class InstallAppsView(QWidget):
             success_msg=t("install_apps.success_msg", letter=letter),
             error_title="Install Apps USB Failed"
         )
+
+    def retranslate_ui(self):
+        """Re-translates all static and dynamic UI elements for this view."""
+        self.lbl_vtitle.setText(t("install_apps.view_title", "📦 INSTALL APPLICATIONS"))
+        count = len(self.main_app.local_apks)
+        self.install_count_label.setText(t("install_apps.count_badge", f"({count} APKs available in repository)", count=count))
+        self.lbl_desc.setText(t("install_apps.banner"))
+        self.btn_all.setText(t("common.select_all", "Select All"))
+        self.btn_none.setText(t("common.deselect_all", "Deselect All"))
+        self.btn_invert.setText(t("common.invert", "Invert"))
+        self.btn_refresh.setText(t("common.refresh", "🔄 Refresh"))
+        self.search_edit.setPlaceholderText(t("install_apps.search_placeholder", "🔍 Search APKs (name, package, file)..."))
+        self.update_action_button()
+        self.render_cards()

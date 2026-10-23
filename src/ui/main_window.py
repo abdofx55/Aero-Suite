@@ -27,6 +27,7 @@ from core.constants import (
     FACTORY_PRIV_APPS, FACTORY_APPS, FACTORY_LAUNCHER_PKG,
     SIGNATURE_BANNER, DEVELOPER_NAME, DEVELOPER_EMAIL, DEVELOPER_PHONE
 )
+from core.i18n import t, get_i18n
 from core.exceptions import setup_global_exception_handler, log_exception, log_to_file
 from ui.components.dialogs import show_confirm_dialog, show_success_dialog, show_error_dialog
 from ui.components.progress_bar import ProgressControl
@@ -62,8 +63,9 @@ def get_base_dir() -> str:
             return os.path.dirname(os.path.abspath(sys.argv[0]))
         return os.path.dirname(os.path.abspath(sys.executable))
 
-    fdir = os.path.dirname(os.path.abspath(__file__))
-    return os.path.dirname(fdir) if os.path.basename(fdir).lower() == "src" else fdir
+    ui_dir = os.path.dirname(os.path.abspath(__file__))
+    src_dir = os.path.dirname(ui_dir)
+    return os.path.dirname(src_dir) if os.path.basename(src_dir).lower() == "src" else src_dir
 
 
 BASE_DIR = get_base_dir()
@@ -216,9 +218,9 @@ class AeroSuiteQtApp(QMainWindow):
         lbl_dev.setStyleSheet(f"font-size: 11px; color: {theme.TEXT_MUTED};")
         dev_layout.addWidget(lbl_dev)
         dev_layout.addStretch()
-        lbl_gift = QLabel("🎁 Free Community Tool for Dongfeng Shine Owners")
-        lbl_gift.setStyleSheet(f"font-size: 11px; font-weight: bold; color: {theme.MINT_SUCCESS};")
-        dev_layout.addWidget(lbl_gift)
+        self.lbl_gift = QLabel(t("app.community_gift", "🎁 Free Community Tool for Dongfeng Shine Owners"))
+        self.lbl_gift.setStyleSheet(f"font-size: 11px; font-weight: bold; color: {theme.MINT_SUCCESS};")
+        dev_layout.addWidget(self.lbl_gift)
         main_layout.addWidget(dev_bar)
 
         # 3. Workspace Layout: Sidebar + Splitter (Content Views + Terminal)
@@ -469,19 +471,33 @@ class AeroSuiteQtApp(QMainWindow):
         self.view_open_app.sync_rows()
 
     def _on_language_changed(self, lang_code: str):
-        from core.i18n import get_i18n, t
+        from core.i18n import get_i18n
         get_i18n().set_language(lang_code)
         self.log_terminal(f"Language changed to: {lang_code.upper()} ({get_i18n().current_lang})", "mint")
-        # Update top bar dynamic texts
-        self.top_bar.lbl_title.setText(t("app.title", "⚡ AERO SUITE"))
-        self.top_bar.lbl_sub.setText(t("app.subtitle", "Dongfeng Shine (Aeolus D53) IVI Studio"))
-        self.top_bar.btn_refresh_usb.setText(t("common.refresh", "🔄 Refresh"))
-        # Rerender views
-        self.view_install_apps.render_cards()
-        self.view_uninstall_apps.render_cards()
-        self.view_open_app.render_rows()
-        self.view_restore.populate_restore_combo()
-        self.view_backup.update_sync_button_state()
+        self.retranslate_ui()
+
+    def retranslate_ui(self):
+        """Dispatches dynamic retranslation across all top bar, sidebar, and view components."""
+        self.top_bar.retranslate_ui()
+        self.side_nav.retranslate_ui()
+        self.lbl_gift.setText(t("app.community_gift", "🎁 Free Community Tool for Dongfeng Shine Owners"))
+        self.progress_control.retranslate_ui()
+        self.terminal.retranslate_ui()
+
+        # Retranslate all views
+        self.view_install_apps.retranslate_ui()
+        self.view_uninstall_apps.retranslate_ui()
+        self.view_open_app.retranslate_ui()
+        self.view_open_settings.retranslate_ui()
+        self.view_install_gms.retranslate_ui()
+        self.view_uninstall_gms.retranslate_ui()
+        self.view_disable_launcher.retranslate_ui()
+        self.view_enable_launcher.retranslate_ui()
+        self.view_reboot_screen.retranslate_ui()
+        self.view_backup.retranslate_ui()
+        self.view_restore.retranslate_ui()
+        self.view_factory_reset.retranslate_ui()
+        self.view_fetch_logs.retranslate_ui()
 
     def log_terminal(self, msg: str, level: str = "cyan"):
         self.terminal.append_log(msg, level)

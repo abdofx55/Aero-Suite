@@ -112,3 +112,9 @@ class TopBarWidget(QFrame):
         lang_code = self.lang_combo.currentData()
         if lang_code:
             self.language_selected.emit(lang_code)
+
+    def retranslate_ui(self):
+        """Dynamically re-translates top bar elements."""
+        self.lbl_title.setText(t("app.title", "⚡ AERO SUITE"))
+        self.lbl_sub.setText(t("app.subtitle", "Dongfeng Shine (Aeolus D53) IVI Studio"))
+        self.btn_refresh_usb.setText(t("common.refresh", "🔄 Refresh"))

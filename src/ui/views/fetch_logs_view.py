@@ -27,23 +27,29 @@ class FetchLogsView(QWidget):
         c_layout.setContentsMargins(18, 16, 18, 16)
         c_layout.setSpacing(14)
 
-        lbl_head = QLabel(t("fetch_logs.view_title"))
-        lbl_head.setStyleSheet(f"font-size: 15px; font-weight: bold; color: {theme.CYAN_PRIMARY}; border: none; background: transparent;")
-        c_layout.addWidget(lbl_head)
+        self.lbl_head = QLabel(t("fetch_logs.view_title"))
+        self.lbl_head.setStyleSheet(f"font-size: 15px; font-weight: bold; color: {theme.CYAN_PRIMARY}; border: none; background: transparent;")
+        c_layout.addWidget(self.lbl_head)
 
-        lbl_desc = QLabel(t("fetch_logs.desc"))
-        lbl_desc.setStyleSheet(f"font-size: 12px; color: {theme.TEXT_PRIMARY}; border: none; background: transparent;")
-        lbl_desc.setWordWrap(True)
-        c_layout.addWidget(lbl_desc)
+        self.lbl_desc = QLabel(t("fetch_logs.desc"))
+        self.lbl_desc.setStyleSheet(f"font-size: 12px; color: {theme.TEXT_PRIMARY}; border: none; background: transparent;")
+        self.lbl_desc.setWordWrap(True)
+        c_layout.addWidget(self.lbl_desc)
 
-        btn_logs = QPushButton(t("fetch_logs.btn_action"))
-        btn_logs.setProperty("class", "btnPrimary")
-        btn_logs.setFixedHeight(44)
-        btn_logs.clicked.connect(self._execute_fetch_logs)
-        c_layout.addWidget(btn_logs)
+        self.btn_logs = QPushButton(t("fetch_logs.btn_action"))
+        self.btn_logs.setProperty("class", "btnPrimary")
+        self.btn_logs.setFixedHeight(44)
+        self.btn_logs.clicked.connect(self._execute_fetch_logs)
+        c_layout.addWidget(self.btn_logs)
 
         layout.addWidget(card)
         layout.addStretch()
+
+    def retranslate_ui(self):
+        """Re-translates elements in FetchLogsView."""
+        self.lbl_head.setText(t("fetch_logs.view_title"))
+        self.lbl_desc.setText(t("fetch_logs.desc"))
+        self.btn_logs.setText(t("fetch_logs.btn_action"))
 
     def _execute_fetch_logs(self):
         if self.main_app._check_busy_and_warn():

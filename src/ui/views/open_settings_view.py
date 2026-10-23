@@ -27,23 +27,29 @@ class OpenSettingsView(QWidget):
         c_layout.setContentsMargins(18, 16, 18, 16)
         c_layout.setSpacing(14)
 
-        lbl_head = QLabel(t("open_settings.view_title", "⚙️ OPEN NATIVE ANDROID SETTINGS"))
-        lbl_head.setStyleSheet(f"font-size: 15px; font-weight: bold; color: {theme.CYAN_PRIMARY};")
-        c_layout.addWidget(lbl_head)
+        self.lbl_head = QLabel(t("open_settings.view_title", "⚙️ OPEN NATIVE ANDROID SETTINGS"))
+        self.lbl_head.setStyleSheet(f"font-size: 15px; font-weight: bold; color: {theme.CYAN_PRIMARY};")
+        c_layout.addWidget(self.lbl_head)
 
-        lbl_desc = QLabel(t("open_settings.desc"))
-        lbl_desc.setStyleSheet(f"font-size: 12px; color: {theme.TEXT_PRIMARY}; border: none; background: transparent;")
-        lbl_desc.setWordWrap(True)
-        c_layout.addWidget(lbl_desc)
+        self.lbl_desc = QLabel(t("open_settings.desc"))
+        self.lbl_desc.setStyleSheet(f"font-size: 12px; color: {theme.TEXT_PRIMARY}; border: none; background: transparent;")
+        self.lbl_desc.setWordWrap(True)
+        c_layout.addWidget(self.lbl_desc)
 
-        btn_settings = QPushButton(t("open_settings.btn_action", "⚙️ PREPARE OPEN SETTINGS USB"))
-        btn_settings.setProperty("class", "btnPrimary")
-        btn_settings.setFixedHeight(44)
-        btn_settings.clicked.connect(self._execute_open_settings)
-        c_layout.addWidget(btn_settings)
+        self.btn_settings = QPushButton(t("open_settings.btn_action", "⚙️ PREPARE OPEN SETTINGS USB"))
+        self.btn_settings.setProperty("class", "btnPrimary")
+        self.btn_settings.setFixedHeight(44)
+        self.btn_settings.clicked.connect(self._execute_open_settings)
+        c_layout.addWidget(self.btn_settings)
 
         layout.addWidget(card)
         layout.addStretch()
+
+    def retranslate_ui(self):
+        """Re-translates elements in OpenSettingsView."""
+        self.lbl_head.setText(t("open_settings.view_title", "⚙️ OPEN NATIVE ANDROID SETTINGS"))
+        self.lbl_desc.setText(t("open_settings.desc"))
+        self.btn_settings.setText(t("open_settings.btn_action", "⚙️ PREPARE OPEN SETTINGS USB"))
 
     def _execute_open_settings(self):
         if self.main_app._check_busy_and_warn():

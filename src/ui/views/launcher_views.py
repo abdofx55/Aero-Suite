@@ -27,23 +27,29 @@ class DisableLauncherView(QWidget):
         c_layout.setContentsMargins(18, 16, 18, 16)
         c_layout.setSpacing(14)
 
-        lbl_head = QLabel(t("disable_launcher.view_title"))
-        lbl_head.setStyleSheet(f"font-size: 15px; font-weight: bold; color: {theme.CRIMSON_DANGER};")
-        c_layout.addWidget(lbl_head)
+        self.lbl_head = QLabel(t("disable_launcher.view_title"))
+        self.lbl_head.setStyleSheet(f"font-size: 15px; font-weight: bold; color: {theme.CRIMSON_DANGER};")
+        c_layout.addWidget(self.lbl_head)
 
-        lbl_desc = QLabel(t("disable_launcher.desc"))
-        lbl_desc.setStyleSheet(f"font-size: 12px; color: {theme.TEXT_PRIMARY}; border: none; background: transparent;")
-        lbl_desc.setWordWrap(True)
-        c_layout.addWidget(lbl_desc)
+        self.lbl_desc = QLabel(t("disable_launcher.desc"))
+        self.lbl_desc.setStyleSheet(f"font-size: 12px; color: {theme.TEXT_PRIMARY}; border: none; background: transparent;")
+        self.lbl_desc.setWordWrap(True)
+        c_layout.addWidget(self.lbl_desc)
 
-        btn_dis = QPushButton(t("disable_launcher.btn_action"))
-        btn_dis.setProperty("class", "btnDanger")
-        btn_dis.setFixedHeight(44)
-        btn_dis.clicked.connect(self._execute_disable_launcher)
-        c_layout.addWidget(btn_dis)
+        self.btn_dis = QPushButton(t("disable_launcher.btn_action"))
+        self.btn_dis.setProperty("class", "btnDanger")
+        self.btn_dis.setFixedHeight(44)
+        self.btn_dis.clicked.connect(self._execute_disable_launcher)
+        c_layout.addWidget(self.btn_dis)
 
         layout.addWidget(card)
         layout.addStretch()
+
+    def retranslate_ui(self):
+        """Re-translates elements in DisableLauncherView."""
+        self.lbl_head.setText(t("disable_launcher.view_title"))
+        self.lbl_desc.setText(t("disable_launcher.desc"))
+        self.btn_dis.setText(t("disable_launcher.btn_action"))
 
     def _execute_disable_launcher(self):
         if self.main_app._check_busy_and_warn():
@@ -84,23 +90,29 @@ class EnableLauncherView(QWidget):
         c_layout.setContentsMargins(18, 16, 18, 16)
         c_layout.setSpacing(14)
 
-        lbl_head = QLabel(t("enable_launcher.view_title"))
-        lbl_head.setStyleSheet(f"font-size: 15px; font-weight: bold; color: {theme.CYAN_PRIMARY}; border: none; background: transparent;")
-        c_layout.addWidget(lbl_head)
+        self.lbl_head = QLabel(t("enable_launcher.view_title"))
+        self.lbl_head.setStyleSheet(f"font-size: 15px; font-weight: bold; color: {theme.CYAN_PRIMARY}; border: none; background: transparent;")
+        c_layout.addWidget(self.lbl_head)
 
-        lbl_desc = QLabel(t("enable_launcher.desc"))
-        lbl_desc.setStyleSheet(f"font-size: 12px; color: {theme.TEXT_PRIMARY}; border: none; background: transparent;")
-        lbl_desc.setWordWrap(True)
-        c_layout.addWidget(lbl_desc)
+        self.lbl_desc = QLabel(t("enable_launcher.desc"))
+        self.lbl_desc.setStyleSheet(f"font-size: 12px; color: {theme.TEXT_PRIMARY}; border: none; background: transparent;")
+        self.lbl_desc.setWordWrap(True)
+        c_layout.addWidget(self.lbl_desc)
 
-        btn_en = QPushButton(t("enable_launcher.btn_action"))
-        btn_en.setProperty("class", "btnPrimary")
-        btn_en.setFixedHeight(44)
-        btn_en.clicked.connect(self._execute_enable_launcher)
-        c_layout.addWidget(btn_en)
+        self.btn_en = QPushButton(t("enable_launcher.btn_action"))
+        self.btn_en.setProperty("class", "btnPrimary")
+        self.btn_en.setFixedHeight(44)
+        self.btn_en.clicked.connect(self._execute_enable_launcher)
+        c_layout.addWidget(self.btn_en)
 
         layout.addWidget(card)
         layout.addStretch()
+
+    def retranslate_ui(self):
+        """Re-translates elements in EnableLauncherView."""
+        self.lbl_head.setText(t("enable_launcher.view_title"))
+        self.lbl_desc.setText(t("enable_launcher.desc"))
+        self.btn_en.setText(t("enable_launcher.btn_action"))
 
     def _execute_enable_launcher(self):
         if self.main_app._check_busy_and_warn():

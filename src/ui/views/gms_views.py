@@ -30,23 +30,29 @@ class InstallGmsView(QWidget):
         c_layout.setContentsMargins(18, 16, 18, 16)
         c_layout.setSpacing(14)
 
-        lbl_head = QLabel(t("install_gms.view_title", "🌐 GOOGLE PLAY SERVICES SETUP"))
-        lbl_head.setStyleSheet(f"font-size: 15px; font-weight: bold; color: {theme.CYAN_PRIMARY}; border: none; background: transparent;")
-        c_layout.addWidget(lbl_head)
+        self.lbl_head = QLabel(t("install_gms.view_title", "🌐 GOOGLE PLAY SERVICES SETUP"))
+        self.lbl_head.setStyleSheet(f"font-size: 15px; font-weight: bold; color: {theme.CYAN_PRIMARY}; border: none; background: transparent;")
+        c_layout.addWidget(self.lbl_head)
 
-        lbl_desc = QLabel(t("install_gms.desc"))
-        lbl_desc.setStyleSheet(f"font-size: 12px; color: {theme.TEXT_PRIMARY}; border: none; background: transparent;")
-        lbl_desc.setWordWrap(True)
-        c_layout.addWidget(lbl_desc)
+        self.lbl_desc = QLabel(t("install_gms.desc"))
+        self.lbl_desc.setStyleSheet(f"font-size: 12px; color: {theme.TEXT_PRIMARY}; border: none; background: transparent;")
+        self.lbl_desc.setWordWrap(True)
+        c_layout.addWidget(self.lbl_desc)
 
-        btn_gms = QPushButton(t("install_gms.btn_action", "🌐 PREPARE GOOGLE PLAY SERVICES USB"))
-        btn_gms.setProperty("class", "btnPrimary")
-        btn_gms.setFixedHeight(44)
-        btn_gms.clicked.connect(self._execute_install_gms)
-        c_layout.addWidget(btn_gms)
+        self.btn_gms = QPushButton(t("install_gms.btn_action", "🌐 PREPARE GOOGLE PLAY SERVICES USB"))
+        self.btn_gms.setProperty("class", "btnPrimary")
+        self.btn_gms.setFixedHeight(44)
+        self.btn_gms.clicked.connect(self._execute_install_gms)
+        c_layout.addWidget(self.btn_gms)
 
         layout.addWidget(card)
         layout.addStretch()
+
+    def retranslate_ui(self):
+        """Re-translates elements in InstallGmsView."""
+        self.lbl_head.setText(t("install_gms.view_title", "🌐 GOOGLE PLAY SERVICES SETUP"))
+        self.lbl_desc.setText(t("install_gms.desc"))
+        self.btn_gms.setText(t("install_gms.btn_action", "🌐 PREPARE GOOGLE PLAY SERVICES USB"))
 
     def _execute_install_gms(self):
         if self.main_app._check_busy_and_warn():
@@ -89,23 +95,29 @@ class UninstallGmsView(QWidget):
         c_layout.setContentsMargins(18, 16, 18, 16)
         c_layout.setSpacing(14)
 
-        lbl_head = QLabel(t("uninstall_gms.view_title", "🧹 REMOVE GOOGLE PLAY SERVICES"))
-        lbl_head.setStyleSheet(f"font-size: 15px; font-weight: bold; color: {theme.CRIMSON_DANGER}; border: none; background: transparent;")
-        c_layout.addWidget(lbl_head)
+        self.lbl_head = QLabel(t("uninstall_gms.view_title", "🧹 REMOVE GOOGLE PLAY SERVICES"))
+        self.lbl_head.setStyleSheet(f"font-size: 15px; font-weight: bold; color: {theme.CRIMSON_DANGER}; border: none; background: transparent;")
+        c_layout.addWidget(self.lbl_head)
 
-        lbl_desc = QLabel(t("uninstall_gms.desc"))
-        lbl_desc.setStyleSheet(f"font-size: 12px; color: {theme.TEXT_PRIMARY}; border: none; background: transparent;")
-        lbl_desc.setWordWrap(True)
-        c_layout.addWidget(lbl_desc)
+        self.lbl_desc = QLabel(t("uninstall_gms.desc"))
+        self.lbl_desc.setStyleSheet(f"font-size: 12px; color: {theme.TEXT_PRIMARY}; border: none; background: transparent;")
+        self.lbl_desc.setWordWrap(True)
+        c_layout.addWidget(self.lbl_desc)
 
-        btn_del = QPushButton(t("uninstall_gms.btn_action", "🧹 PREPARE GOOGLE SERVICES REMOVAL USB"))
-        btn_del.setProperty("class", "btnDanger")
-        btn_del.setFixedHeight(44)
-        btn_del.clicked.connect(self._execute_uninstall_gms)
-        c_layout.addWidget(btn_del)
+        self.btn_del = QPushButton(t("uninstall_gms.btn_action", "🧹 PREPARE GOOGLE SERVICES REMOVAL USB"))
+        self.btn_del.setProperty("class", "btnDanger")
+        self.btn_del.setFixedHeight(44)
+        self.btn_del.clicked.connect(self._execute_uninstall_gms)
+        c_layout.addWidget(self.btn_del)
 
         layout.addWidget(card)
         layout.addStretch()
+
+    def retranslate_ui(self):
+        """Re-translates elements in UninstallGmsView."""
+        self.lbl_head.setText(t("uninstall_gms.view_title", "🧹 REMOVE GOOGLE PLAY SERVICES"))
+        self.lbl_desc.setText(t("uninstall_gms.desc"))
+        self.btn_del.setText(t("uninstall_gms.btn_action", "🧹 PREPARE GOOGLE SERVICES REMOVAL USB"))
 
     def _execute_uninstall_gms(self):
         if self.main_app._check_busy_and_warn():

@@ -30,14 +30,14 @@ class RestoreView(QWidget):
         c_layout.setContentsMargins(18, 16, 18, 16)
         c_layout.setSpacing(14)
 
-        lbl_head = QLabel(t("restore.view_title"))
-        lbl_head.setStyleSheet(f"font-size: 15px; font-weight: bold; color: {theme.CYAN_PRIMARY}; border: none; background: transparent;")
-        c_layout.addWidget(lbl_head)
+        self.lbl_head = QLabel(t("restore.view_title"))
+        self.lbl_head.setStyleSheet(f"font-size: 15px; font-weight: bold; color: {theme.CYAN_PRIMARY}; border: none; background: transparent;")
+        c_layout.addWidget(self.lbl_head)
 
-        lbl_desc = QLabel(t("restore.desc"))
-        lbl_desc.setStyleSheet(f"font-size: 12px; color: {theme.TEXT_PRIMARY}; border: none; background: transparent;")
-        lbl_desc.setWordWrap(True)
-        c_layout.addWidget(lbl_desc)
+        self.lbl_desc = QLabel(t("restore.desc"))
+        self.lbl_desc.setStyleSheet(f"font-size: 12px; color: {theme.TEXT_PRIMARY}; border: none; background: transparent;")
+        self.lbl_desc.setWordWrap(True)
+        c_layout.addWidget(self.lbl_desc)
 
         self.restore_combo = QComboBox()
         self.restore_combo.currentIndexChanged.connect(lambda: self.update_restore_button_state())
@@ -53,6 +53,13 @@ class RestoreView(QWidget):
         layout.addStretch()
 
         self.populate_restore_combo()
+
+    def retranslate_ui(self):
+        """Re-translates elements in RestoreView."""
+        self.lbl_head.setText(t("restore.view_title"))
+        self.lbl_desc.setText(t("restore.desc"))
+        self.populate_restore_combo()
+        self.update_restore_button_state()
 
     def populate_restore_combo(self):
         self.restore_combo.clear()

@@ -27,19 +27,19 @@ class UninstallAppsView(QWidget):
         layout.setSpacing(10)
 
         # Header Title
-        lbl_vtitle = QLabel(t("uninstall_apps.view_title", "🛡 SAFE UNINSTALL APPS"))
-        lbl_vtitle.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {theme.AMBER_WARN};")
-        layout.addWidget(lbl_vtitle)
+        self.lbl_vtitle = QLabel(t("uninstall_apps.view_title", "🛡 SAFE UNINSTALL APPS"))
+        self.lbl_vtitle.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {theme.AMBER_WARN};")
+        layout.addWidget(self.lbl_vtitle)
 
         # Safety Banner
         banner = QFrame()
         banner.setProperty("class", "card")
         b_layout = QVBoxLayout(banner)
         b_layout.setContentsMargins(14, 10, 14, 10)
-        lbl_banner = QLabel(t("uninstall_apps.banner"))
-        lbl_banner.setStyleSheet(f"font-size: 11px; color: {theme.TEXT_PRIMARY}; border: none; background: transparent;")
-        lbl_banner.setWordWrap(True)
-        b_layout.addWidget(lbl_banner)
+        self.lbl_banner = QLabel(t("uninstall_apps.banner"))
+        self.lbl_banner.setStyleSheet(f"font-size: 11px; color: {theme.TEXT_PRIMARY}; border: none; background: transparent;")
+        self.lbl_banner.setWordWrap(True)
+        b_layout.addWidget(self.lbl_banner)
         layout.addWidget(banner)
 
         # Controls Strip
@@ -243,3 +243,15 @@ class UninstallAppsView(QWidget):
             success_msg=t("uninstall_apps.success_msg", letter=letter),
             error_title="Uninstall Preparation Failed"
         )
+
+    def retranslate_ui(self):
+        """Re-translates all static and dynamic UI elements for this view."""
+        self.lbl_vtitle.setText(t("uninstall_apps.view_title", "🛡 SAFE UNINSTALL APPS"))
+        self.lbl_banner.setText(t("uninstall_apps.banner"))
+        self.btn_all.setText(t("common.select_all", "Select All"))
+        self.btn_none.setText(t("common.deselect_all", "Deselect All"))
+        self.btn_invert.setText(t("common.invert", "Invert"))
+        self.btn_refresh.setText(t("common.refresh", "🔄 Refresh"))
+        self.search_edit.setPlaceholderText(t("uninstall_apps.search_placeholder", "🔍 Search Packages to Uninstall (contains name, package)..."))
+        self.update_action_button()
+        self.render_cards()

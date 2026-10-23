@@ -27,23 +27,29 @@ class RebootScreenView(QWidget):
         c_layout.setContentsMargins(18, 16, 18, 16)
         c_layout.setSpacing(14)
 
-        lbl_head = QLabel(t("reboot_screen.view_title"))
-        lbl_head.setStyleSheet(f"font-size: 15px; font-weight: bold; color: {theme.CYAN_PRIMARY}; border: none; background: transparent;")
-        c_layout.addWidget(lbl_head)
+        self.lbl_head = QLabel(t("reboot_screen.view_title"))
+        self.lbl_head.setStyleSheet(f"font-size: 15px; font-weight: bold; color: {theme.CYAN_PRIMARY}; border: none; background: transparent;")
+        c_layout.addWidget(self.lbl_head)
 
-        lbl_desc = QLabel(t("reboot_screen.desc"))
-        lbl_desc.setStyleSheet(f"font-size: 12px; color: {theme.TEXT_PRIMARY}; border: none; background: transparent;")
-        lbl_desc.setWordWrap(True)
-        c_layout.addWidget(lbl_desc)
+        self.lbl_desc = QLabel(t("reboot_screen.desc"))
+        self.lbl_desc.setStyleSheet(f"font-size: 12px; color: {theme.TEXT_PRIMARY}; border: none; background: transparent;")
+        self.lbl_desc.setWordWrap(True)
+        c_layout.addWidget(self.lbl_desc)
 
-        btn_rb = QPushButton(t("reboot_screen.btn_action"))
-        btn_rb.setProperty("class", "btnPrimary")
-        btn_rb.setFixedHeight(44)
-        btn_rb.clicked.connect(self._execute_reboot_screen)
-        c_layout.addWidget(btn_rb)
+        self.btn_rb = QPushButton(t("reboot_screen.btn_action"))
+        self.btn_rb.setProperty("class", "btnPrimary")
+        self.btn_rb.setFixedHeight(44)
+        self.btn_rb.clicked.connect(self._execute_reboot_screen)
+        c_layout.addWidget(self.btn_rb)
 
         layout.addWidget(card)
         layout.addStretch()
+
+    def retranslate_ui(self):
+        """Re-translates elements in RebootScreenView."""
+        self.lbl_head.setText(t("reboot_screen.view_title"))
+        self.lbl_desc.setText(t("reboot_screen.desc"))
+        self.btn_rb.setText(t("reboot_screen.btn_action"))
 
     def _execute_reboot_screen(self):
         if self.main_app._check_busy_and_warn():

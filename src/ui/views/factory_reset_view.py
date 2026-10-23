@@ -28,23 +28,29 @@ class FactoryResetView(QWidget):
         c_layout.setContentsMargins(18, 16, 18, 16)
         c_layout.setSpacing(14)
 
-        lbl_head = QLabel(t("factory_reset.view_title"))
-        lbl_head.setStyleSheet(f"font-size: 15px; font-weight: bold; color: {theme.CRIMSON_DANGER}; border: none; background: transparent;")
-        c_layout.addWidget(lbl_head)
+        self.lbl_head = QLabel(t("factory_reset.view_title"))
+        self.lbl_head.setStyleSheet(f"font-size: 15px; font-weight: bold; color: {theme.CRIMSON_DANGER}; border: none; background: transparent;")
+        c_layout.addWidget(self.lbl_head)
 
-        lbl_desc = QLabel(t("factory_reset.desc"))
-        lbl_desc.setStyleSheet(f"font-size: 12px; color: {theme.TEXT_PRIMARY}; border: none; background: transparent;")
-        lbl_desc.setWordWrap(True)
-        c_layout.addWidget(lbl_desc)
+        self.lbl_desc = QLabel(t("factory_reset.desc"))
+        self.lbl_desc.setStyleSheet(f"font-size: 12px; color: {theme.TEXT_PRIMARY}; border: none; background: transparent;")
+        self.lbl_desc.setWordWrap(True)
+        c_layout.addWidget(self.lbl_desc)
 
-        btn_reset = QPushButton(t("factory_reset.btn_action"))
-        btn_reset.setProperty("class", "btnDanger")
-        btn_reset.setFixedHeight(44)
-        btn_reset.clicked.connect(self._execute_factory_reset)
-        c_layout.addWidget(btn_reset)
+        self.btn_reset = QPushButton(t("factory_reset.btn_action"))
+        self.btn_reset.setProperty("class", "btnDanger")
+        self.btn_reset.setFixedHeight(44)
+        self.btn_reset.clicked.connect(self._execute_factory_reset)
+        c_layout.addWidget(self.btn_reset)
 
         layout.addWidget(card)
         layout.addStretch()
+
+    def retranslate_ui(self):
+        """Re-translates elements in FactoryResetView."""
+        self.lbl_head.setText(t("factory_reset.view_title"))
+        self.lbl_desc.setText(t("factory_reset.desc"))
+        self.btn_reset.setText(t("factory_reset.btn_action"))
 
     def _execute_factory_reset(self):
         if self.main_app._check_busy_and_warn():

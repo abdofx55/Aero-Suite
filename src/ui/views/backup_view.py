@@ -29,20 +29,20 @@ class BackupView(QWidget):
         cp_layout.setContentsMargins(18, 16, 18, 16)
         cp_layout.setSpacing(12)
 
-        lbl_head1 = QLabel(t("backup.view_title"))
-        lbl_head1.setStyleSheet(f"font-size: 15px; font-weight: bold; color: {theme.CYAN_PRIMARY};")
-        cp_layout.addWidget(lbl_head1)
+        self.lbl_head1 = QLabel(t("backup.view_title"))
+        self.lbl_head1.setStyleSheet(f"font-size: 15px; font-weight: bold; color: {theme.CYAN_PRIMARY};")
+        cp_layout.addWidget(self.lbl_head1)
 
-        lbl_desc1 = QLabel(t("backup.desc"))
-        lbl_desc1.setStyleSheet(f"font-size: 11px; color: {theme.TEXT_PRIMARY}; border: none; background: transparent;")
-        lbl_desc1.setWordWrap(True)
-        cp_layout.addWidget(lbl_desc1)
+        self.lbl_desc1 = QLabel(t("backup.desc"))
+        self.lbl_desc1.setStyleSheet(f"font-size: 11px; color: {theme.TEXT_PRIMARY}; border: none; background: transparent;")
+        self.lbl_desc1.setWordWrap(True)
+        cp_layout.addWidget(self.lbl_desc1)
 
-        btn_backup = QPushButton(t("backup.btn_prepare"))
-        btn_backup.setProperty("class", "btnPrimary")
-        btn_backup.setFixedHeight(38)
-        btn_backup.clicked.connect(self._execute_prepare_backup)
-        cp_layout.addWidget(btn_backup)
+        self.btn_backup = QPushButton(t("backup.btn_prepare"))
+        self.btn_backup.setProperty("class", "btnPrimary")
+        self.btn_backup.setFixedHeight(38)
+        self.btn_backup.clicked.connect(self._execute_prepare_backup)
+        cp_layout.addWidget(self.btn_backup)
         layout.addWidget(card_prep)
 
         # Section 2: Sync to PC Vault
@@ -52,14 +52,14 @@ class BackupView(QWidget):
         cs_layout.setContentsMargins(18, 16, 18, 16)
         cs_layout.setSpacing(12)
 
-        lbl_head2 = QLabel(t("backup.sync_title"))
-        lbl_head2.setStyleSheet(f"font-size: 15px; font-weight: bold; color: {theme.MINT_SUCCESS};")
-        cs_layout.addWidget(lbl_head2)
+        self.lbl_head2 = QLabel(t("backup.sync_title"))
+        self.lbl_head2.setStyleSheet(f"font-size: 15px; font-weight: bold; color: {theme.MINT_SUCCESS};")
+        cs_layout.addWidget(self.lbl_head2)
 
-        lbl_desc2 = QLabel(t("backup.sync_desc"))
-        lbl_desc2.setStyleSheet(f"font-size: 11px; color: {theme.TEXT_MUTED}; border: none; background: transparent;")
-        lbl_desc2.setWordWrap(True)
-        cs_layout.addWidget(lbl_desc2)
+        self.lbl_desc2 = QLabel(t("backup.sync_desc"))
+        self.lbl_desc2.setStyleSheet(f"font-size: 11px; color: {theme.TEXT_MUTED}; border: none; background: transparent;")
+        self.lbl_desc2.setWordWrap(True)
+        cs_layout.addWidget(self.lbl_desc2)
 
         self.btn_sync = QPushButton(t("backup.sync_title"))
         self.btn_sync.setProperty("class", "btnSuccess")
@@ -69,6 +69,15 @@ class BackupView(QWidget):
         layout.addWidget(card_sync)
 
         layout.addStretch()
+        self.update_sync_button_state()
+
+    def retranslate_ui(self):
+        """Re-translates elements in BackupView."""
+        self.lbl_head1.setText(t("backup.view_title"))
+        self.lbl_desc1.setText(t("backup.desc"))
+        self.btn_backup.setText(t("backup.btn_prepare"))
+        self.lbl_head2.setText(t("backup.sync_title"))
+        self.lbl_desc2.setText(t("backup.sync_desc"))
         self.update_sync_button_state()
 
     def update_sync_button_state(self):

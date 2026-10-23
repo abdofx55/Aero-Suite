@@ -27,19 +27,19 @@ class OpenAppView(QWidget):
         layout.setSpacing(10)
 
         # Header Title
-        lbl_vtitle = QLabel(t("open_app.view_title", "🚀 LAUNCH APPLICATION ON CAR"))
-        lbl_vtitle.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {theme.CYAN_PRIMARY};")
-        layout.addWidget(lbl_vtitle)
+        self.lbl_vtitle = QLabel(t("open_app.view_title", "🚀 LAUNCH APPLICATION ON CAR"))
+        self.lbl_vtitle.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {theme.CYAN_PRIMARY};")
+        layout.addWidget(self.lbl_vtitle)
 
         # Instruction Banner
         banner = QFrame()
         banner.setProperty("class", "card")
         b_layout = QVBoxLayout(banner)
         b_layout.setContentsMargins(14, 10, 14, 10)
-        lbl_banner = QLabel(t("open_app.banner"))
-        lbl_banner.setStyleSheet(f"font-size: 11px; color: {theme.TEXT_PRIMARY}; border: none; background: transparent;")
-        lbl_banner.setWordWrap(True)
-        b_layout.addWidget(lbl_banner)
+        self.lbl_banner = QLabel(t("open_app.banner"))
+        self.lbl_banner.setStyleSheet(f"font-size: 11px; color: {theme.TEXT_PRIMARY}; border: none; background: transparent;")
+        self.lbl_banner.setWordWrap(True)
+        b_layout.addWidget(self.lbl_banner)
         layout.addWidget(banner)
 
         # Controls & Search Strip
@@ -50,10 +50,10 @@ class OpenAppView(QWidget):
         self.search_edit.textChanged.connect(self._on_search_changed)
         ctrl_bar.addWidget(self.search_edit)
 
-        btn_refresh = QPushButton(t("common.refresh", "🔄 Refresh"))
-        btn_refresh.setFixedHeight(32)
-        btn_refresh.clicked.connect(self.main_app._rescan_apks)
-        ctrl_bar.addWidget(btn_refresh)
+        self.btn_refresh = QPushButton(t("common.refresh", "🔄 Refresh"))
+        self.btn_refresh.setFixedHeight(32)
+        self.btn_refresh.clicked.connect(self.main_app._rescan_apks)
+        ctrl_bar.addWidget(self.btn_refresh)
         layout.addLayout(ctrl_bar)
 
         # Scroll Area for apps
@@ -184,3 +184,12 @@ class OpenAppView(QWidget):
             success_msg=t("open_app.success_msg", app_title=app_title, letter=letter),
             error_title="Launch USB Preparation Failed"
         )
+
+    def retranslate_ui(self):
+        """Re-translates all static and dynamic UI elements for this view."""
+        self.lbl_vtitle.setText(t("open_app.view_title", "🚀 LAUNCH APPLICATION ON CAR"))
+        self.lbl_banner.setText(t("open_app.banner"))
+        self.search_edit.setPlaceholderText(t("open_app.search_placeholder", "🔍 Search Apps to Open (name or package)..."))
+        self.btn_refresh.setText(t("common.refresh", "🔄 Refresh"))
+        self.update_action_button()
+        self.render_rows()

@@ -7,6 +7,7 @@ from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushBu
 from PySide6.QtGui import QTextCursor
 from PySide6.QtCore import Qt
 import theme
+from core.i18n import t
 
 
 class TerminalWidget(QWidget):
@@ -22,22 +23,22 @@ class TerminalWidget(QWidget):
 
         header = QHBoxLayout()
         header.setContentsMargins(0, 0, 0, 2)
-        lbl_console = QLabel("💻 TERMINAL & SYSTEM LOGS")
-        lbl_console.setStyleSheet(f"font-size: 10px; font-weight: bold; color: {theme.TEXT_MUTED}; letter-spacing: 0.5px;")
-        header.addWidget(lbl_console)
+        self.lbl_console = QLabel(t("terminal.header", "💻 TERMINAL & SYSTEM LOGS"))
+        self.lbl_console.setStyleSheet(f"font-size: 10px; font-weight: bold; color: {theme.TEXT_MUTED}; letter-spacing: 0.5px;")
+        header.addWidget(self.lbl_console)
         header.addStretch()
 
-        btn_copy_log = QPushButton("📋 Copy Logs")
-        btn_copy_log.setFixedHeight(22)
-        btn_copy_log.setStyleSheet(f"font-size: 10px; padding: 1px 8px; background-color: {theme.SURFACE_2}; color: {theme.TEXT_MUTED}; border: 1px solid {theme.BORDER_SLATE}; border-radius: 4px;")
-        btn_copy_log.clicked.connect(self.copy_logs)
-        header.addWidget(btn_copy_log)
+        self.btn_copy_log = QPushButton(t("terminal.copy_logs", "📋 Copy Logs"))
+        self.btn_copy_log.setFixedHeight(22)
+        self.btn_copy_log.setStyleSheet(f"font-size: 10px; padding: 1px 8px; background-color: {theme.SURFACE_2}; color: {theme.TEXT_MUTED}; border: 1px solid {theme.BORDER_SLATE}; border-radius: 4px;")
+        self.btn_copy_log.clicked.connect(self.copy_logs)
+        header.addWidget(self.btn_copy_log)
 
-        btn_clear_log = QPushButton("Clear")
-        btn_clear_log.setFixedHeight(22)
-        btn_clear_log.setStyleSheet(f"font-size: 10px; padding: 1px 8px; background-color: {theme.SURFACE_2}; color: {theme.TEXT_MUTED}; border: 1px solid {theme.BORDER_SLATE}; border-radius: 4px;")
-        btn_clear_log.clicked.connect(self.clear_logs)
-        header.addWidget(btn_clear_log)
+        self.btn_clear_log = QPushButton(t("terminal.clear", "Clear"))
+        self.btn_clear_log.setFixedHeight(22)
+        self.btn_clear_log.setStyleSheet(f"font-size: 10px; padding: 1px 8px; background-color: {theme.SURFACE_2}; color: {theme.TEXT_MUTED}; border: 1px solid {theme.BORDER_SLATE}; border-radius: 4px;")
+        self.btn_clear_log.clicked.connect(self.clear_logs)
+        header.addWidget(self.btn_clear_log)
         layout.addLayout(header)
 
         self.terminal_edit = QPlainTextEdit()
@@ -46,6 +47,12 @@ class TerminalWidget(QWidget):
         self.terminal_edit.setFixedHeight(125)
         self.txt_terminal = self.terminal_edit
         layout.addWidget(self.terminal_edit)
+
+    def retranslate_ui(self):
+        """Re-translates terminal header and control buttons."""
+        self.lbl_console.setText(t("terminal.header", "💻 TERMINAL & SYSTEM LOGS"))
+        self.btn_copy_log.setText(t("terminal.copy_logs", "📋 Copy Logs"))
+        self.btn_clear_log.setText(t("terminal.clear", "Clear"))
 
     def log_message(self, message: str, level: str = "cyan"):
         """Appends colorized, timestamped HTML message to terminal."""

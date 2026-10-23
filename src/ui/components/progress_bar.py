@@ -5,6 +5,7 @@ Uses QPropertyAnimation for fluid visual scaling without jitter or frozen steps.
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QProgressBar
 from PySide6.QtCore import Qt, Signal, QPropertyAnimation, QTimer
 import theme
+from core.i18n import t
 
 
 class ProgressControl(QWidget):
@@ -24,7 +25,7 @@ class ProgressControl(QWidget):
         prog_bar.setContentsMargins(0, 0, 0, 0)
         prog_bar.setSpacing(8)
 
-        self.lbl_status = QLabel("System Idle — Ready for operation.")
+        self.lbl_status = QLabel(t("app.idle_status", "System Idle — Ready for operation."))
         self.lbl_status.setStyleSheet(f"font-size: 11px; color: {theme.TEXT_MUTED};")
         prog_bar.addWidget(self.lbl_status, stretch=1)
 
@@ -35,7 +36,7 @@ class ProgressControl(QWidget):
         self.progress_bar.setFixedWidth(240)
         prog_bar.addWidget(self.progress_bar)
 
-        self.btn_cancel_op = QPushButton("✖ Cancel")
+        self.btn_cancel_op = QPushButton(t("common.cancel", "✖ Cancel"))
         self.btn_cancel_op.setObjectName("btnCancelOp")
         self.btn_cancel_op.setFixedHeight(22)
         self.btn_cancel_op.setStyleSheet(
@@ -54,6 +55,12 @@ class ProgressControl(QWidget):
 
         # Smooth animation interpolation
         self.progress_anim = QPropertyAnimation(self.progress_bar, b"value")
+
+    def retranslate_ui(self):
+        """Re-translates idle status label and cancel button."""
+        if self.progress_bar.value() == 0 or self.progress_bar.value() == 100:
+            self.lbl_status.setText(t("app.idle_status", "System Idle — Ready for operation."))
+        self.btn_cancel_op.setText(t("common.cancel", "✖ Cancel"))
 
     def reset(self):
         self.progress_anim.stop()

@@ -14,24 +14,26 @@ from core.i18n import t
 def get_feature_categories():
     """Returns localized category titles and feature descriptions."""
     return [
-        (t("categories.app_management", "APPLICATION MANAGEMENT"), [
-            ("install_apps",     "📦", t("nav.install_apps_title", "Install Apps"),           t("nav.install_apps_desc", "Custom apps with autostart & portrait")),
-            ("uninstall_apps",   "🗑", t("nav.uninstall_apps_title", "Safe Uninstall"),         t("nav.uninstall_apps_desc", "Remove unwanted user & system apps")),
-            ("open_app",         "🚀", t("nav.open_app_title", "Open Application"),       t("nav.open_app_desc", "Launch any installed package directly")),
-            ("open_settings",    "⚙️", t("nav.open_settings_title", "Android Settings"),       t("nav.open_settings_desc", "Access hidden native Android settings")),
+        (t("categories.applications_control", "APPLICATIONS & CONTROL"), [
+            ("install_apps",     "📦", t("nav.install_apps_title", "Install Apps"),       t("nav.install_apps_desc", "Install favorite apps with 1 click")),
+            ("uninstall_apps",   "🛡", t("nav.uninstall_apps_title", "Uninstall Apps"),   t("nav.uninstall_apps_desc", "Clean apps & free up storage")),
+            ("open_app",         "🚀", t("nav.open_app_title", "Open App"),               t("nav.open_app_desc", "Launch hidden or installed apps")),
+            ("open_settings",    "⚙️", t("nav.open_settings_title", "Open Settings"),     t("nav.open_settings_desc", "Unlock full Android Settings")),
         ]),
-        (t("categories.google_launcher", "GOOGLE & LAUNCHER MODS"), [
-            ("install_gms",      "🌐", t("nav.install_gms_title", "Google Services"),        t("nav.install_gms_desc", "Inject Play Store & Google Framework")),
-            ("uninstall_gms",    "🧹", t("nav.uninstall_gms_title", "Purge Google Services"),  t("nav.uninstall_gms_desc", "Clean wipe of Google framework & apps")),
-            ("disable_launcher",  "🚫", t("nav.disable_launcher_title", "Disable Launcher"),         t("nav.disable_launcher_desc", "Switch to custom dashboard")),
-            ("enable_launcher",   "✅", t("nav.enable_launcher_title", "Enable Launcher"),          t("nav.enable_launcher_desc", "Restore original dashboard")),
-            ("reboot_screen",     "🔄", t("nav.reboot_screen_title", "Restart Screen"),           t("nav.reboot_screen_desc", "Quick safe screen restart")),
+        (t("categories.google_services", "GOOGLE PLAY SERVICES"), [
+            ("install_gms",      "🌐", t("nav.install_gms_title", "Install GMS"),         t("nav.install_gms_desc", "Get Google Play Store & Maps")),
+            ("uninstall_gms",    "🧹", t("nav.uninstall_gms_title", "Uninstall GMS"),     t("nav.uninstall_gms_desc", "Remove Google & boost speed")),
+        ]),
+        (t("categories.launcher_power", "LAUNCHER & POWER"), [
+            ("disable_launcher",  "🚫", t("nav.disable_launcher_title", "Disable Launcher"), t("nav.disable_launcher_desc", "Switch to custom dashboard")),
+            ("enable_launcher",   "✅", t("nav.enable_launcher_title", "Enable Launcher"),  t("nav.enable_launcher_desc", "Restore original dashboard")),
+            ("reboot_screen",     "🔄", t("nav.reboot_screen_title", "Restart Screen"),     t("nav.reboot_screen_desc", "Quick safe screen restart")),
         ]),
         (t("categories.backup_maintenance", "BACKUP & MAINTENANCE"), [
             ("backup",            "💾", t("nav.backup_title", "Backup"),                   t("nav.backup_desc", "Save full car backup to PC")),
             ("restore",           "📥", t("nav.restore_title", "Restore"),                  t("nav.restore_desc", "Restore saved apps & settings")),
-            ("factory_reset",     "⚠️", t("nav.factory_reset_title", "Factory Reset"),            t("nav.factory_reset_desc", "100% clean dealership reset")),
-            ("fetch_logs",        "📋", t("nav.fetch_logs_title", "Fetch Logs"),               t("nav.fetch_logs_desc", "Get diagnostic error logs")),
+            ("factory_reset",     "⚠️", t("nav.factory_reset_title", "Factory Reset"),      t("nav.factory_reset_desc", "100% clean dealership reset")),
+            ("fetch_logs",        "📋", t("nav.fetch_logs_title", "Fetch Logs"),           t("nav.fetch_logs_desc", "Get diagnostic error logs")),
         ])
     ]
 
@@ -48,6 +50,7 @@ class SideNavWidget(QFrame):
         self.setObjectName("sideBar")
         self.setFixedWidth(260)
         self.feature_buttons = {}
+        self.category_labels = []
         self.current_feature = None
         self._build_ui()
 
@@ -77,6 +80,7 @@ class SideNavWidget(QFrame):
             lbl_cat = QLabel(cat_title)
             lbl_cat.setProperty("class", "navCategory")
             self.nav_layout.addWidget(lbl_cat)
+            self.category_labels.append(lbl_cat)
 
             for feat_id, feat_icon, feat_title, feat_desc in cat_feats:
                 item_btn = QFrame()
@@ -126,6 +130,17 @@ class SideNavWidget(QFrame):
         self.nav_layout.addStretch()
         nav_scroll.setWidget(nav_widget)
         sidebar_layout.addWidget(nav_scroll)
+
+    def retranslate_ui(self):
+        """Dynamically re-translates category headers and feature item titles and descriptions."""
+        categories = get_feature_categories()
+        for i, (cat_title, cat_feats) in enumerate(categories):
+            if i < len(self.category_labels):
+                self.category_labels[i].setText(cat_title)
+            for feat_id, feat_icon, feat_title, feat_desc in cat_feats:
+                if feat_id in self.feature_buttons:
+                    self.feature_buttons[feat_id]["title"].setText(feat_title)
+                    self.feature_buttons[feat_id]["desc"].setText(feat_desc)
 
     def select_feature(self, feat_id: str):
         """Highlights the active feature and emits feature_selected signal."""
