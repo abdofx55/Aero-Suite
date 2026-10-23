@@ -21,9 +21,11 @@ if USE_LEGACY_CTK:
         app.mainloop()
 else:
     from PySide6.QtWidgets import QApplication
+    from core.exceptions import setup_global_exception_handler
     from qt_app_gui import AeroSuiteQtApp
 
     if __name__ == "__main__":
+        setup_global_exception_handler()
         app = QApplication(sys.argv)
         window = AeroSuiteQtApp()
         window.show()
