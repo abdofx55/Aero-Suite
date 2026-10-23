@@ -49,8 +49,8 @@ FACTORY_APPS = [
 ]
 
 
-def clean_usb_drive(usb_drive: str, log_func=None, progress_func=None, cancel_check=None, start_pct: float = 0.0, end_pct: float = 0.10):
-    """Safely wipes all user files from the USB drive to prepare a clean payload."""
+def clean_usb_drive(usb_drive: str, log_func=None, progress_func=None, cancel_check=None, start_pct: float = 0.0, end_pct: float = 0.15):
+    """Safely wipes all user files from the USB drive to prepare a clean payload with live progress."""
     def _log(msg):
         if log_func:
             log_func(msg)
@@ -65,14 +65,7 @@ def clean_usb_drive(usb_drive: str, log_func=None, progress_func=None, cancel_ch
         return False
 
     if progress_func:
-        progress_func(start_pct + (end_pct - start_pct) * 0.1, "Inspecting USB drive contents...", 0.0, 0, 0)
-
-    def _handle_remove_readonly(func, path, exc_info):
-        try:
-            os.chmod(path, stat.S_IWRITE)
-            func(path)
-        except Exception:
-            pass
+        progress_func(start_pct, "Inspecting USB drive contents...", 0.0, 0, 0)
 
     try:
         raw_items = os.listdir(usb_drive)
@@ -85,44 +78,77 @@ def clean_usb_drive(usb_drive: str, log_func=None, progress_func=None, cancel_ch
         if item.lower() not in ("system volume information", "$recycle.bin")
     ]
 
-    total_items = len(all_items)
-    if total_items == 0:
+    if not all_items:
         if progress_func:
-            progress_func(start_pct + (end_pct - start_pct) * 0.5, "USB drive is clean.", 0.0, 0, 0)
-            time.sleep(0.04)
-            progress_func(end_pct, "USB drive ready.", 0.0, 0, 0)
+            progress_func(end_pct, "USB drive is clean and ready.", 0.0, 0, 0)
         return True
 
-    for idx, item in enumerate(all_items):
+    # Scan all files and directories to delete for granular progress
+    files_to_delete = []
+    dirs_to_delete = []
+    for item in all_items:
+        item_path = os.path.join(usb_drive, item)
+        if os.path.isdir(item_path):
+            for root, dirs, files in os.walk(item_path, topdown=False):
+                for f in files:
+                    files_to_delete.append(os.path.join(root, f))
+                for d in dirs:
+                    dirs_to_delete.append(os.path.join(root, d))
+            dirs_to_delete.append(item_path)
+        else:
+            files_to_delete.append(item_path)
+
+    total_ops = len(files_to_delete) + len(dirs_to_delete)
+    if total_ops == 0:
+        total_ops = 1
+
+    ops_done = 0
+    last_update_time = 0.0
+
+    for fpath in files_to_delete:
         if cancel_check and cancel_check():
             _log("  ⚠ Cleaning cancelled.")
             return False
 
-        item_ratio = idx / total_items
-        cur_pct = start_pct + (end_pct - start_pct) * item_ratio
-        if progress_func:
-            progress_func(cur_pct, f"Wiping {item} from USB...", 0.0, idx, total_items)
-
-        item_path = os.path.join(usb_drive, item)
+        fname = os.path.basename(fpath)
         for attempt in range(3):
             try:
-                if os.path.isdir(item_path):
-                    shutil.rmtree(item_path, onerror=_handle_remove_readonly)
-                else:
-                    try:
-                        os.chmod(item_path, stat.S_IWRITE)
-                    except Exception:
-                        pass
-                    os.remove(item_path)
+                os.chmod(fpath, stat.S_IWRITE)
+                os.remove(fpath)
                 break
-            except Exception as e:
+            except Exception:
                 if attempt < 2:
-                    time.sleep(0.2)
-                else:
-                    _log(f"  ⚠ Failed to remove {item}: {e}")
+                    time.sleep(0.05)
+
+        ops_done += 1
+        now = time.time()
+        if progress_func and (now - last_update_time >= 0.08 or ops_done == total_ops):
+            last_update_time = now
+            cur_pct = start_pct + (end_pct - start_pct) * (ops_done / total_ops)
+            progress_func(cur_pct, f"Cleaning USB: removing {fname[:24]}...", 0.0, ops_done, total_ops)
+
+    for dpath in dirs_to_delete:
+        if cancel_check and cancel_check():
+            _log("  ⚠ Cleaning cancelled.")
+            return False
+
+        try:
+            os.rmdir(dpath)
+        except Exception:
+            try:
+                shutil.rmtree(dpath, ignore_errors=True)
+            except Exception:
+                pass
+
+        ops_done += 1
+        now = time.time()
+        if progress_func and (now - last_update_time >= 0.08 or ops_done == total_ops):
+            last_update_time = now
+            cur_pct = start_pct + (end_pct - start_pct) * (ops_done / total_ops)
+            progress_func(cur_pct, f"Cleaning USB: removing directories...", 0.0, ops_done, total_ops)
 
     if progress_func:
-        progress_func(end_pct, "USB wipe completed.", 0.0, total_items, total_items)
+        progress_func(end_pct, "USB wipe completed.", 0.0, total_ops, total_ops)
     time.sleep(0.05)
     return True
 
@@ -233,7 +259,9 @@ def extract_so_libs(apk_path: str, output_dir: str, log_func=None):
 
 
 def write_script_file(script_path: str, content: str):
-    """Writes a shell script with strict UNIX line endings (LF)."""
+    """Writes a shell script with strict UNIX line endings (LF), ensuring parent directory exists."""
+    parent_dir = os.path.dirname(os.path.abspath(script_path))
+    os.makedirs(parent_dir, exist_ok=True)
     with open(script_path, "wb") as f:
         f.write(content.replace("\r\n", "\n").encode("utf-8"))
 
@@ -263,7 +291,7 @@ def prepare_install_apps_usb(usb_drive: str, selected_apks: list, options: dict 
         return False
 
     try:
-        clean_usb_drive(usb_drive, log_func, progress_func, cancel_check, start_pct=0.0, end_pct=0.10)
+        clean_usb_drive(usb_drive, log_func, progress_func, cancel_check, start_pct=0.0, end_pct=0.15)
         if cancel_check and cancel_check():
             _log("  ⚠ Operation cancelled by user.")
             return False
@@ -335,7 +363,7 @@ def prepare_install_apps_usb(usb_drive: str, selected_apks: list, options: dict 
                 copied_cumulative_bytes += chunk_len
                 elapsed = max(0.05, time.time() - start_transfer_time)
                 speed_mb_s = (copied_cumulative_bytes / (1024 * 1024)) / elapsed
-                pct = 0.10 + 0.82 * min(1.0, copied_cumulative_bytes / total_bytes)
+                pct = 0.15 + 0.70 * min(1.0, copied_cumulative_bytes / total_bytes)
                 c_mb = copied_cumulative_bytes / (1024 * 1024)
                 t_mb = total_bytes / (1024 * 1024)
                 if progress_func:
@@ -360,7 +388,7 @@ def prepare_install_apps_usb(usb_drive: str, selected_apks: list, options: dict 
                 return False
 
         if progress_func:
-            progress_func(0.95, "Generating installer script & finalizing payload...", 0.0, total_bytes / (1024*1024), total_bytes / (1024*1024))
+            progress_func(0.88, "Extracting native libraries & verifying signatures...", 0.0, total_bytes / (1024*1024), total_bytes / (1024*1024))
 
         # Generate custom_rep.sh for both System Apps and User Apps
         script = f"""#!/system/bin/sh
@@ -515,7 +543,14 @@ if [ -n "$AUTO_LAUNCH_PKG" ]; then
 fi
 """
 
+        if progress_func:
+            progress_func(0.93, "Generating automated installer script (custom_rep.sh)...", 0.0, total_bytes / (1024*1024), total_bytes / (1024*1024))
+
+        os.makedirs(update_dir, exist_ok=True)
         write_script_file(os.path.join(update_dir, "custom_rep.sh"), script)
+
+        if progress_func:
+            progress_func(0.96, "Writing vehicle manual & manifest flags...", 0.0, total_bytes / (1024*1024), total_bytes / (1024*1024))
 
         info_path = os.path.join(usb_drive, "Install_Apps_Info.txt")
         info_content = f"""📦 AERO SUITE — INSTALL APPLICATIONS MANUAL
@@ -568,6 +603,8 @@ The automated payload script executes an intelligent dual-target deployment pipe
             f.write(info_content)
 
         if progress_func:
+            progress_func(0.99, "Flushing filesystem buffers to USB drive...", 0.0, total_bytes / (1024*1024), total_bytes / (1024*1024))
+            time.sleep(0.04)
             progress_func(1.0, "Install Apps USB ready!", 0.0, total_bytes / (1024 * 1024), total_bytes / (1024 * 1024))
 
         _log(f"✓ Install Apps USB prepared successfully ({user_app_count} User Apps, {system_app_count} System Apps).")
@@ -606,7 +643,7 @@ def prepare_uninstall_apps_usb(usb_drive: str, selected_packages: list, allowed_
         return False
 
     try:
-        clean_usb_drive(usb_drive, log_func, progress_func, cancel_check, start_pct=0.0, end_pct=0.50)
+        clean_usb_drive(usb_drive, log_func, progress_func, cancel_check, start_pct=0.0, end_pct=0.30)
         if cancel_check and cancel_check():
             _log("  ⚠ Operation cancelled by user.")
             return False
@@ -614,7 +651,7 @@ def prepare_uninstall_apps_usb(usb_drive: str, selected_packages: list, allowed_
         os.makedirs(update_dir, exist_ok=True)
 
         if progress_func:
-            progress_func(0.75, f"Configuring {len(vetted_packages)} uninstall command(s)...", 0.0, 0, 0)
+            progress_func(0.55, f"Configuring {len(vetted_packages)} uninstall command(s)...", 0.0, 0, 0)
 
         uninstall_cmds = ""
         for pkg in vetted_packages:
@@ -731,10 +768,15 @@ The uninstallation engine executes a deep dual-sweep removal while maintaining a
 
 {SIGNATURE_BANNER}
 """
+        if progress_func:
+            progress_func(0.80, "Writing uninstallation manual & instructions...", 0.0, len(vetted_packages), len(vetted_packages))
+
         with open(info_path, "w", encoding="utf-8") as f:
             f.write(info_content)
 
         if progress_func:
+            progress_func(0.96, "Flushing filesystem buffers to USB drive...", 0.0, len(vetted_packages), len(vetted_packages))
+            time.sleep(0.04)
             progress_func(1.0, "Safe Uninstall USB ready!", 0.0, len(vetted_packages), len(vetted_packages))
 
         _log("✓ Safe Uninstall Apps USB prepared successfully.")
@@ -766,7 +808,7 @@ def prepare_install_gms_usb(usb_drive: str, gms_dir: str, log_func=None, progres
         return False
 
     try:
-        clean_usb_drive(usb_drive, log_func, progress_func, cancel_check, start_pct=0.0, end_pct=0.10)
+        clean_usb_drive(usb_drive, log_func, progress_func, cancel_check, start_pct=0.0, end_pct=0.15)
         if cancel_check and cancel_check():
             _log("  ⚠ Operation cancelled by user.")
             return False
@@ -805,7 +847,7 @@ def prepare_install_gms_usb(usb_drive: str, gms_dir: str, log_func=None, progres
                 copied_cumulative_bytes += chunk_len
                 elapsed = max(0.05, time.time() - start_transfer_time)
                 speed_mb_s = (copied_cumulative_bytes / (1024 * 1024)) / elapsed
-                pct = 0.10 + 0.82 * min(1.0, copied_cumulative_bytes / total_gms_bytes)
+                pct = 0.15 + 0.70 * min(1.0, copied_cumulative_bytes / total_gms_bytes)
                 c_mb = copied_cumulative_bytes / (1024 * 1024)
                 t_mb = total_gms_bytes / (1024 * 1024)
                 if progress_func:
@@ -825,7 +867,7 @@ def prepare_install_gms_usb(usb_drive: str, gms_dir: str, log_func=None, progres
             extract_so_libs(src_f, dest_dir, log_func)
 
         if progress_func:
-            progress_func(0.95, "Generating GMS injection script & permissions...", 0.0, total_gms_bytes / (1024 * 1024), total_gms_bytes / (1024 * 1024))
+            progress_func(0.88, "Generating GMS injection script & permissions...", 0.0, total_gms_bytes / (1024 * 1024), total_gms_bytes / (1024 * 1024))
 
         script = """#!/system/bin/sh
 # ==========================================
@@ -976,10 +1018,15 @@ Note: The APK versions included here are specifically calibrated for Dongfeng Sh
 
 {SIGNATURE_BANNER}
 """
+        if progress_func:
+            progress_func(0.96, "Writing Google Services manual & permissions...", 0.0, total_gms_bytes / (1024 * 1024), total_gms_bytes / (1024 * 1024))
+
         with open(info_path, "w", encoding="utf-8") as f:
             f.write(info_content)
 
         if progress_func:
+            progress_func(0.99, "Flushing filesystem buffers to USB drive...", 0.0, total_gms_bytes / (1024 * 1024), total_gms_bytes / (1024 * 1024))
+            time.sleep(0.04)
             progress_func(1.0, "Install GMS USB ready!", 0.0, total_gms_bytes / (1024 * 1024), total_gms_bytes / (1024 * 1024))
 
         _log("✓ Install GMS USB prepared successfully.")
@@ -1008,7 +1055,7 @@ def prepare_uninstall_gms_usb(usb_drive: str, log_func=None, progress_func=None,
         return False
 
     try:
-        clean_usb_drive(usb_drive, log_func, progress_func, cancel_check, start_pct=0.0, end_pct=0.60)
+        clean_usb_drive(usb_drive, log_func, progress_func, cancel_check, start_pct=0.0, end_pct=0.30)
         if cancel_check and cancel_check():
             _log("  ⚠ Operation cancelled by user.")
             return False
@@ -1016,7 +1063,7 @@ def prepare_uninstall_gms_usb(usb_drive: str, log_func=None, progress_func=None,
         os.makedirs(update_dir, exist_ok=True)
 
         if progress_func:
-            progress_func(0.80, "Configuring GMS clean purge script...", 0.0, 0, 0)
+            progress_func(0.55, "Configuring GMS clean purge script...", 0.0, 0, 0)
 
         script = """#!/system/bin/sh
 # ==========================================
@@ -1122,10 +1169,15 @@ The scrub payload performs a rigorous, deep system purge:
 
 {SIGNATURE_BANNER}
 """
+        if progress_func:
+            progress_func(0.80, "Writing Google Services removal manual...", 0.0, 0, 0)
+
         with open(info_path, "w", encoding="utf-8") as f:
             f.write(info_content)
 
         if progress_func:
+            progress_func(0.96, "Flushing filesystem buffers to USB drive...", 0.0, 0, 0)
+            time.sleep(0.04)
             progress_func(1.0, "Uninstall GMS USB ready!", 0.0, 0, 0)
 
         _log("✓ Uninstall GMS USB prepared successfully.")
@@ -1154,7 +1206,7 @@ def prepare_open_settings_usb(usb_drive: str, log_func=None, progress_func=None,
         return False
 
     try:
-        clean_usb_drive(usb_drive, log_func, progress_func, cancel_check, start_pct=0.0, end_pct=0.60)
+        clean_usb_drive(usb_drive, log_func, progress_func, cancel_check, start_pct=0.0, end_pct=0.30)
         if cancel_check and cancel_check():
             _log("  ⚠ Operation cancelled by user.")
             return False
@@ -1162,7 +1214,7 @@ def prepare_open_settings_usb(usb_drive: str, log_func=None, progress_func=None,
         os.makedirs(update_dir, exist_ok=True)
 
         if progress_func:
-            progress_func(0.80, "Configuring Android Settings unlock trigger...", 0.0, 0, 0)
+            progress_func(0.60, "Configuring Android Settings unlock trigger...", 0.0, 0, 0)
 
         script = """#!/system/bin/sh
 # ==========================================
@@ -1217,10 +1269,15 @@ The script bypasses the restricted proprietary Dongfeng launcher to directly lau
 
 {SIGNATURE_BANNER}
 """
+        if progress_func:
+            progress_func(0.85, "Writing Android Settings manual...", 0.0, 0, 0)
+
         with open(info_path, "w", encoding="utf-8") as f:
             f.write(info_content)
 
         if progress_func:
+            progress_func(0.96, "Flushing filesystem buffers to USB drive...", 0.0, 0, 0)
+            time.sleep(0.04)
             progress_func(1.0, "Open Settings USB ready!", 0.0, 0, 0)
 
         _log("✓ Open Settings USB prepared successfully.")
@@ -1271,7 +1328,7 @@ def prepare_backup_usb(
         return False
 
     try:
-        clean_usb_drive(usb_drive, log_func, progress_func, cancel_check, start_pct=0.0, end_pct=0.60)
+        clean_usb_drive(usb_drive, log_func, progress_func, cancel_check, start_pct=0.0, end_pct=0.30)
         if cancel_check and cancel_check():
             _log("  ⚠ Operation cancelled by user.")
             return False
@@ -1279,7 +1336,7 @@ def prepare_backup_usb(
         os.makedirs(update_dir, exist_ok=True)
 
         if progress_func:
-            progress_func(0.80, f"Writing {b_type_clean.upper()} car backup scripts...", 0.0, 0, 0)
+            progress_func(0.60, f"Writing {b_type_clean.upper()} car backup scripts...", 0.0, 0, 0)
 
         priv_str = ' '.join(FACTORY_PRIV_APPS)
         app_str = ' '.join(FACTORY_APPS)
@@ -1615,10 +1672,15 @@ Layers processed:
 
 {SIGNATURE_BANNER}
 """
+        if progress_func:
+            progress_func(0.85, f"Writing {b_type_clean.upper()} backup manual...", 0.0, 0, 0)
+
         with open(info_path, "w", encoding="utf-8") as f:
             f.write(info_content)
 
         if progress_func:
+            progress_func(0.96, "Flushing filesystem buffers to USB drive...", 0.0, 0, 0)
+            time.sleep(0.04)
             progress_func(1.0, f"{b_type_clean.capitalize()} Backup USB ready!", 0.0, 0, 0)
 
         _log(f"✓ {b_type_sh} Backup USB prepared successfully.")
@@ -1648,7 +1710,7 @@ def prepare_factory_reset_usb(usb_drive: str, local_factory_backup_dir: str = ""
 
     try:
         has_local_factory = bool(local_factory_backup_dir and os.path.exists(local_factory_backup_dir))
-        clean_usb_drive(usb_drive, log_func, progress_func, cancel_check, start_pct=0.0, end_pct=0.10 if has_local_factory else 0.60)
+        clean_usb_drive(usb_drive, log_func, progress_func, cancel_check, start_pct=0.0, end_pct=0.15 if has_local_factory else 0.30)
         if cancel_check and cancel_check():
             _log("  ⚠ Operation cancelled by user.")
             return False
@@ -1664,17 +1726,19 @@ def prepare_factory_reset_usb(usb_drive: str, local_factory_backup_dir: str = ""
                 progress_callback=progress_func,
                 log_func=log_func,
                 cancel_check=cancel_check,
-                scale_range=(0.10, 0.90)
+                scale_range=(0.15, 0.88)
             )
             if not ok_copy or (cancel_check and cancel_check()):
                 _log("  ⚠ Factory Reset preparation aborted.")
                 return False
+            if progress_func:
+                progress_func(0.91, "Verifying factory restore integrity...", 0.0, 0, 0)
         else:
             if progress_func:
-                progress_func(0.80, "Configuring factory whitelist...", 0.0, 0, 0)
+                progress_func(0.55, "Configuring factory whitelist...", 0.0, 0, 0)
 
         if progress_func:
-            progress_func(0.95, "Generating Zero-Trace recovery script...", 0.0, 0, 0)
+            progress_func(0.94 if has_local_factory else 0.75, "Generating Zero-Trace recovery script...", 0.0, 0, 0)
 
         priv_str = ' '.join(FACTORY_PRIV_APPS)
         app_str = ' '.join(FACTORY_APPS)
@@ -1869,10 +1933,15 @@ Ideal for returning the vehicle to the dealership with zero detected modificatio
 
 {SIGNATURE_BANNER}
 """
+        if progress_func:
+            progress_func(0.97 if has_local_factory else 0.90, "Writing Zero-Trace purge manual...", 0.0, 0, 0)
+
         with open(info_path, "w", encoding="utf-8") as f:
             f.write(info_content)
 
         if progress_func:
+            progress_func(0.99 if has_local_factory else 0.96, "Flushing filesystem buffers to USB drive...", 0.0, 0, 0)
+            time.sleep(0.04)
             progress_func(1.0, "Factory Reset USB ready!", 0.0, 0, 0)
 
         _log("✓ Factory Reset USB prepared successfully.")
@@ -1907,7 +1976,7 @@ def prepare_restore_usb(usb_drive: str, local_backup_folder: str, log_func=None,
         return False
 
     try:
-        clean_usb_drive(usb_drive, log_func, progress_func, cancel_check, start_pct=0.0, end_pct=0.10)
+        clean_usb_drive(usb_drive, log_func, progress_func, cancel_check, start_pct=0.0, end_pct=0.15)
         if cancel_check and cancel_check():
             _log("  ⚠ Operation cancelled by user.")
             return False
@@ -1922,10 +1991,13 @@ def prepare_restore_usb(usb_drive: str, local_backup_folder: str, log_func=None,
 
         dest_usb_backup = os.path.join(usb_drive, "Backup")
         _log("  Transferring PC backup files to USB (with live progress)...")
-        ok_copy = copy_tree_with_progress(src_backup_data, dest_usb_backup, progress_func, log_func, cancel_check=cancel_check, scale_range=(0.10, 0.95))
+        ok_copy = copy_tree_with_progress(src_backup_data, dest_usb_backup, progress_func, log_func, cancel_check=cancel_check, scale_range=(0.15, 0.88))
         if not ok_copy or (cancel_check and cancel_check()):
             _log("  ⚠ Restore preparation cancelled.")
             return False
+
+        if progress_func:
+            progress_func(0.90, "Verifying backup metadata & vehicle profile...", 0.0, 0, 0)
 
         # Detect source backup metadata
         is_community = False
@@ -2443,7 +2515,14 @@ sync
 # Kernel Hard Reboot to guarantee zero in-memory flush over restored files
 reboot -f || busybox reboot -f || setprop sys.powerctl reboot || reboot
 """
+        if progress_func:
+            progress_func(0.93, "Generating 12-step restoration script (custom_rep.sh)...", 0.0, 0, 0)
+
+        os.makedirs(update_dir, exist_ok=True)
         write_script_file(os.path.join(update_dir, "custom_rep.sh"), script)
+
+        if progress_func:
+            progress_func(0.96, "Writing restoration manual & verification flags...", 0.0, 0, 0)
 
         info_path = os.path.join(usb_drive, "Restore_Info.txt")
         info_content = f"""🔄 AERO SUITE — SYSTEM & DATA RESTORE MANUAL
@@ -2485,6 +2564,8 @@ The restore engine executes an exact 12-step restoration of your saved vehicle b
             f.write(info_content)
 
         if progress_func:
+            progress_func(0.99, "Flushing filesystem buffers to USB drive...", 0.0, 0, 0)
+            time.sleep(0.04)
             progress_func(1.0, "Restore USB ready!", 0.0, 0, 0)
 
         _log("✓ Restore USB prepared successfully.")
@@ -2513,7 +2594,7 @@ def prepare_fetch_logs_usb(usb_drive: str, log_func=None, progress_func=None, ca
         return False
 
     try:
-        clean_usb_drive(usb_drive, log_func, progress_func, cancel_check, start_pct=0.0, end_pct=0.60)
+        clean_usb_drive(usb_drive, log_func, progress_func, cancel_check, start_pct=0.0, end_pct=0.30)
         if cancel_check and cancel_check():
             _log("  ⚠ Operation cancelled by user.")
             return False
@@ -2521,7 +2602,7 @@ def prepare_fetch_logs_usb(usb_drive: str, log_func=None, progress_func=None, ca
         os.makedirs(update_dir, exist_ok=True)
 
         if progress_func:
-            progress_func(0.80, "Configuring logcat & diagnostic dump script...", 0.0, 0, 0)
+            progress_func(0.60, "Configuring logcat & diagnostic dump script...", 0.0, 0, 0)
 
         script = """#!/system/bin/sh
 # ==========================================
@@ -2604,10 +2685,15 @@ Extracted Diagnostic Data:
 
 {SIGNATURE_BANNER}
 """
+        if progress_func:
+            progress_func(0.85, "Writing diagnostic logs manual...", 0.0, 0, 0)
+
         with open(info_path, "w", encoding="utf-8") as f:
             f.write(info_content)
 
         if progress_func:
+            progress_func(0.96, "Flushing filesystem buffers to USB drive...", 0.0, 0, 0)
+            time.sleep(0.04)
             progress_func(1.0, "Fetch Logs USB ready!", 0.0, 0, 0)
 
         _log("✓ Fetch Logs USB prepared successfully.")
@@ -2636,7 +2722,7 @@ def prepare_disable_launcher_usb(usb_drive: str, log_func=None, progress_func=No
         return False
 
     try:
-        clean_usb_drive(usb_drive, log_func, progress_func, cancel_check, start_pct=0.0, end_pct=0.60)
+        clean_usb_drive(usb_drive, log_func, progress_func, cancel_check, start_pct=0.0, end_pct=0.30)
         if cancel_check and cancel_check():
             _log("  ⚠ Operation cancelled by user.")
             return False
@@ -2645,7 +2731,7 @@ def prepare_disable_launcher_usb(usb_drive: str, log_func=None, progress_func=No
         os.makedirs(update_dir, exist_ok=True)
 
         if progress_func:
-            progress_func(0.80, "Generating disable launcher payload...", 0.0, 0, 0)
+            progress_func(0.60, "Generating disable launcher payload...", 0.0, 0, 0)
 
         script = """#!/system/bin/sh
 # ==========================================
@@ -2709,10 +2795,15 @@ This payload safely freezes (disables) the factory proprietary launcher:
 
 {SIGNATURE_BANNER}
 """
+        if progress_func:
+            progress_func(0.85, "Writing disable launcher manual...", 0.0, 0, 0)
+
         with open(info_path, "w", encoding="utf-8") as f:
             f.write(info_content)
 
         if progress_func:
+            progress_func(0.96, "Flushing filesystem buffers to USB drive...", 0.0, 0, 0)
+            time.sleep(0.04)
             progress_func(1.0, "Disable Launcher USB ready!", 0.0, 0, 0)
 
         _log("✓ Disable Launcher USB prepared successfully.")
@@ -2741,7 +2832,7 @@ def prepare_enable_launcher_usb(usb_drive: str, log_func=None, progress_func=Non
         return False
 
     try:
-        clean_usb_drive(usb_drive, log_func, progress_func, cancel_check, start_pct=0.0, end_pct=0.60)
+        clean_usb_drive(usb_drive, log_func, progress_func, cancel_check, start_pct=0.0, end_pct=0.30)
         if cancel_check and cancel_check():
             _log("  ⚠ Operation cancelled by user.")
             return False
@@ -2750,7 +2841,7 @@ def prepare_enable_launcher_usb(usb_drive: str, log_func=None, progress_func=Non
         os.makedirs(update_dir, exist_ok=True)
 
         if progress_func:
-            progress_func(0.80, "Generating enable launcher payload...", 0.0, 0, 0)
+            progress_func(0.60, "Generating enable launcher payload...", 0.0, 0, 0)
 
         script = """#!/system/bin/sh
 # ==========================================
@@ -2814,10 +2905,15 @@ This payload restores and unfreezes the stock factory launcher:
 
 {SIGNATURE_BANNER}
 """
+        if progress_func:
+            progress_func(0.85, "Writing enable launcher manual...", 0.0, 0, 0)
+
         with open(info_path, "w", encoding="utf-8") as f:
             f.write(info_content)
 
         if progress_func:
+            progress_func(0.96, "Flushing filesystem buffers to USB drive...", 0.0, 0, 0)
+            time.sleep(0.04)
             progress_func(1.0, "Enable Launcher USB ready!", 0.0, 0, 0)
 
         _log("✓ Enable Launcher USB prepared successfully.")
@@ -2853,7 +2949,7 @@ def prepare_open_app_usb(usb_drive: str, package_name: str, app_name: str = "", 
     clean_pkg = re.sub(r'[^a-zA-Z0-9._]', '', package_name)
 
     try:
-        clean_usb_drive(usb_drive, log_func, progress_func, cancel_check, start_pct=0.0, end_pct=0.60)
+        clean_usb_drive(usb_drive, log_func, progress_func, cancel_check, start_pct=0.0, end_pct=0.30)
         if cancel_check and cancel_check():
             _log("  ⚠ Operation cancelled by user.")
             return False
@@ -2862,7 +2958,7 @@ def prepare_open_app_usb(usb_drive: str, package_name: str, app_name: str = "", 
         os.makedirs(update_dir, exist_ok=True)
 
         if progress_func:
-            progress_func(0.80, f"Configuring launch trigger for {display_label}...", 0.0, 0, 0)
+            progress_func(0.60, f"Configuring launch trigger for {display_label}...", 0.0, 0, 0)
 
         script = f"""#!/system/bin/sh
 # ==========================================
@@ -2928,10 +3024,15 @@ This payload launches the selected application directly:
 
 {SIGNATURE_BANNER}
 """
+        if progress_func:
+            progress_func(0.85, f"Writing launch manual for {display_label}...", 0.0, 0, 0)
+
         with open(info_path, "w", encoding="utf-8") as f:
             f.write(info_content)
 
         if progress_func:
+            progress_func(0.96, "Flushing filesystem buffers to USB drive...", 0.0, 0, 0)
+            time.sleep(0.04)
             progress_func(1.0, f"Launch {display_label} USB ready!", 0.0, 0, 0)
 
         _log(f"✓ Open App USB prepared successfully for {display_label}.")
@@ -2960,7 +3061,7 @@ def prepare_reboot_screen_usb(usb_drive: str, log_func=None, progress_func=None,
         return False
 
     try:
-        clean_usb_drive(usb_drive, log_func, progress_func, cancel_check, start_pct=0.0, end_pct=0.60)
+        clean_usb_drive(usb_drive, log_func, progress_func, cancel_check, start_pct=0.0, end_pct=0.30)
         if cancel_check and cancel_check():
             _log("  ⚠ Operation cancelled by user.")
             return False
@@ -2969,7 +3070,7 @@ def prepare_reboot_screen_usb(usb_drive: str, log_func=None, progress_func=None,
         os.makedirs(update_dir, exist_ok=True)
 
         if progress_func:
-            progress_func(0.80, "Generating infotainment reboot payload...", 0.0, 0, 0)
+            progress_func(0.60, "Generating infotainment reboot payload...", 0.0, 0, 0)
 
         script = """#!/system/bin/sh
 # ==========================================
@@ -3024,10 +3125,15 @@ This utility provides an instant, safe hardware-level reboot for the infotainmen
 
 {SIGNATURE_BANNER}
 """
+        if progress_func:
+            progress_func(0.85, "Writing restart screen manual...", 0.0, 0, 0)
+
         with open(info_path, "w", encoding="utf-8") as f:
             f.write(info_content)
 
         if progress_func:
+            progress_func(0.96, "Flushing filesystem buffers to USB drive...", 0.0, 0, 0)
+            time.sleep(0.04)
             progress_func(1.0, "Reboot Screen USB ready!", 0.0, 0, 0)
 
         _log("✓ Restart Infotainment Screen USB prepared successfully.")
