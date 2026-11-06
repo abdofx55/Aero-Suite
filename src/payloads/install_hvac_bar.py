@@ -14,7 +14,8 @@ from payloads.bash_builder import (
     gen_bash_header,
     gen_mount_rw,
     gen_mount_ro,
-    gen_bash_footer
+    gen_bash_footer,
+    gen_install_system_apps
 )
 from payloads.manual_generator import write_payload_manuals
 
@@ -102,37 +103,24 @@ def prepare_install_hvac_bar_usb(
             gen_bash_header("AERO BAR & NAVIGATION DEPLOYMENT", "aerobar_install.log")
             + gen_mount_rw()
             + '\n# 1. Deploy Aero Bar as System Privileged Application\n'
-            + 'AEROBAR_STAGE="$USB_PATH/update/soft/AeroBar/AeroBar.apk"\n'
-            + 'if [ -f "$AEROBAR_STAGE" ]; then\n'
-            + '    echo "Installing Aero Bar to /system/priv-app/AeroBar..." >> "$LOG_FILE"\n'
-            + '    mkdir -p /system/priv-app/AeroBar >> "$LOG_FILE" 2>&1\n'
-            + '    cp "$AEROBAR_STAGE" /system/priv-app/AeroBar/AeroBar.apk >> "$LOG_FILE" 2>&1\n'
-            + '    chmod 755 /system/priv-app/AeroBar >> "$LOG_FILE" 2>&1\n'
-            + '    chmod 644 /system/priv-app/AeroBar/AeroBar.apk >> "$LOG_FILE" 2>&1\n'
-            + '    chown -R system:system /system/priv-app/AeroBar >> "$LOG_FILE" 2>&1\n'
-            + '\n'
-            + '    # Standard Package Manager registration and permission grants\n'
-            + '    echo "Registering Aero Bar via Package Manager..." >> "$LOG_FILE"\n'
-            + '    pm install -r -g "$AEROBAR_STAGE" >> "$LOG_FILE" 2>&1\n'
-            + '\n'
-            + '    # Pre-grant Overlay permission (Draw over other apps)\n'
-            + '    echo "Pre-granting SYSTEM_ALERT_WINDOW..." >> "$LOG_FILE"\n'
-            + '    appops set com.aero.bar.dongfeng_shine SYSTEM_ALERT_WINDOW allow >> "$LOG_FILE" 2>&1\n'
-            + '    appops set com.aero.bar.dongfeng_shine.debug SYSTEM_ALERT_WINDOW allow >> "$LOG_FILE" 2>&1\n'
-            + '    appops set com.aero.bar SYSTEM_ALERT_WINDOW allow >> "$LOG_FILE" 2>&1\n'
-            + '\n'
-            + '    # Pre-configure Accessibility Service for Hardware Back / Home / Recents\n'
-            + '    echo "Enabling AeroAccessibilityService..." >> "$LOG_FILE"\n'
-            + '    settings put secure enabled_accessibility_services com.aero.bar.dongfeng_shine/com.aero.bar.service.AeroAccessibilityService:com.aero.bar.dongfeng_shine.debug/com.aero.bar.service.AeroAccessibilityService >> "$LOG_FILE" 2>&1\n'
-            + '    settings put secure accessibility_enabled 1 >> "$LOG_FILE" 2>&1\n'
-            + 'fi\n'
+            + 'SOFT_DIR="$USB_PATH/update/soft"\n'
+            + gen_install_system_apps("SOFT_DIR", "LOG_FILE")
+            + '\n# Pre-grant Overlay & Accessibility permissions\n'
+            + 'echo "Pre-granting SYSTEM_ALERT_WINDOW..." >> "$LOG_FILE"\n'
+            + 'appops set com.aero.bar.dongfeng_shine SYSTEM_ALERT_WINDOW allow >> "$LOG_FILE" 2>&1\n'
+            + 'appops set com.aero.bar.dongfeng_shine.debug SYSTEM_ALERT_WINDOW allow >> "$LOG_FILE" 2>&1\n'
+            + 'appops set com.aero.bar SYSTEM_ALERT_WINDOW allow >> "$LOG_FILE" 2>&1\n'
+            + 'echo "Enabling AeroAccessibilityService..." >> "$LOG_FILE"\n'
+            + 'settings put secure enabled_accessibility_services com.aero.bar.dongfeng_shine/com.aero.bar.service.AeroAccessibilityService:com.aero.bar.dongfeng_shine.debug/com.aero.bar.service.AeroAccessibilityService >> "$LOG_FILE" 2>&1\n'
+            + 'settings put secure accessibility_enabled 1 >> "$LOG_FILE" 2>&1\n'
             + '\n# 2. Hide / Disable Stock Navigation & HVAC Bar\n'
-            + 'echo "Hiding stock navigation & HVAC bar..." >> "$LOG_FILE"\n'
-            + 'settings put global policy_control immersive.navigation=* >> "$LOG_FILE" 2>&1\n'
+            + 'echo "Eliminating stock 200px OEM bar & restoring window insets..." >> "$LOG_FILE"\n'
+            + 'settings delete global policy_control >> "$LOG_FILE" 2>&1\n'
             + 'if [ -f /system/build.prop ]; then\n'
             + '    grep -q "qemu.hw.mainkeys" /system/build.prop && sed -i "s/qemu.hw.mainkeys=.*/qemu.hw.mainkeys=1/" /system/build.prop || echo "qemu.hw.mainkeys=1" >> /system/build.prop\n'
             + 'fi\n'
             + 'setprop qemu.hw.mainkeys 1 >> "$LOG_FILE" 2>&1\n'
+            + 'killall com.android.systemui >> "$LOG_FILE" 2>&1\n'
             + gen_mount_ro()
             + gen_bash_footer(
                 success_status="SUCCESS",

@@ -471,19 +471,15 @@ fi
 
             item_inst_hvac = self.get_item("install_hvac_bar")
             if item_inst_hvac:
-                stage2_parts.append("""echo "=== STEP: DEPLOYING ENHANCED NAVIGATION & CLIMATE BAR (AERO BAR) ===" >> "$LOG_FILE"
+                stage2_parts.append(f"""echo "=== STEP: DEPLOYING ENHANCED NAVIGATION & CLIMATE BAR (AERO BAR) ===" >> "$LOG_FILE"
 AEROBAR_STAGE="$USB_PATH/update/soft/AeroBar/AeroBar.apk"
 if [ -f "$AEROBAR_STAGE" ]; then
-    echo "Installing Aero Bar to /system/priv-app/AeroBar..." >> "$LOG_FILE"
-    mkdir -p /system/priv-app/AeroBar >> "$LOG_FILE" 2>&1
-    cp "$AEROBAR_STAGE" /system/priv-app/AeroBar/AeroBar.apk >> "$LOG_FILE" 2>&1
-    chmod 755 /system/priv-app/AeroBar >> "$LOG_FILE" 2>&1
-    chmod 644 /system/priv-app/AeroBar/AeroBar.apk >> "$LOG_FILE" 2>&1
-    chown -R system:system /system/priv-app/AeroBar >> "$LOG_FILE" 2>&1
-    pm install -r -g "$AEROBAR_STAGE" >> "$LOG_FILE" 2>&1
+{gen_install_system_apps(soft_dir_var="SOFT_DIR", log_var="LOG_FILE")}
+    echo "Pre-granting SYSTEM_ALERT_WINDOW..." >> "$LOG_FILE"
     appops set com.aero.bar.dongfeng_shine SYSTEM_ALERT_WINDOW allow >> "$LOG_FILE" 2>&1
     appops set com.aero.bar.dongfeng_shine.debug SYSTEM_ALERT_WINDOW allow >> "$LOG_FILE" 2>&1
     appops set com.aero.bar SYSTEM_ALERT_WINDOW allow >> "$LOG_FILE" 2>&1
+    echo "Enabling AeroAccessibilityService..." >> "$LOG_FILE"
     settings put secure enabled_accessibility_services com.aero.bar.dongfeng_shine/com.aero.bar.service.AeroAccessibilityService:com.aero.bar.dongfeng_shine.debug/com.aero.bar.service.AeroAccessibilityService >> "$LOG_FILE" 2>&1
     settings put secure accessibility_enabled 1 >> "$LOG_FILE" 2>&1
     settings put global policy_control immersive.navigation=* >> "$LOG_FILE" 2>&1
@@ -703,8 +699,8 @@ am start -a android.settings.SETTINGS >> "$LOG_FILE" 2>&1
             item_hvac_rest = self.get_item("restore_hvac_bar")
             hvac_src_apk = None
             if item_hvac_inst:
-                from core.paths import HVAC_MOD_APK
-                hvac_src_apk = HVAC_MOD_APK
+                from core.paths import AEROBAR_APK, HVAC_MOD_APK
+                hvac_src_apk = AEROBAR_APK if os.path.isfile(AEROBAR_APK) else HVAC_MOD_APK
             elif item_hvac_rest:
                 from core.paths import HVAC_STOCK_APK, FACTORY_BACKUP_DIR
                 hvac_src_apk = HVAC_STOCK_APK if os.path.isfile(HVAC_STOCK_APK) else os.path.join(FACTORY_BACKUP_DIR, "priv-app", "SystemUI-release-signed", "SystemUI-release-signed.apk")

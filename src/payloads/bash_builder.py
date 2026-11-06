@@ -58,8 +58,6 @@ if [ -z "$USB_PATH" ] || [ "$USB_PATH" = "/" ]; then
     USB_PATH=$(dirname "$SCRIPT_DIR")
 fi
 
-LOG_FILE="$USB_PATH/{log_filename}"
-
 # Read Vehicle Hardware Telemetry
 CAR_SERIAL=$(getprop ro.serialno 2>/dev/null)
 if [ -z "$CAR_SERIAL" ] || [ "$CAR_SERIAL" = "unknown" ]; then
@@ -79,12 +77,13 @@ CAR_MODEL=$(getprop ro.product.model 2>/dev/null)
 
 CAR_DIR="$USB_PATH/completed_cars/${{CAR_SERIAL}}"
 mkdir -p "$CAR_DIR" 2>/dev/null
+STATE_DIR="$CAR_DIR"
+LOG_FILE="$CAR_DIR/{log_filename}"
 
 if [ -f "$CAR_DIR/completed.done" ] || [ -f "$USB_PATH/completed_cars/${{CAR_SERIAL}}.done" ]; then
     echo "=== CAR [$CAR_MODEL | $CAR_SERIAL] ALREADY PROVISIONED BY THIS USB — SKIPPING ===" >> "$LOG_FILE"
     exit 0
 fi
-STATE_DIR="$CAR_DIR"
 
 if [ ! -f "$LOG_FILE" ]; then
     echo "=== AERO {safe_title} START ===" > "$LOG_FILE"
@@ -268,8 +267,6 @@ if [ -z "$USB_PATH" ] || [ "$USB_PATH" = "/" ]; then
     USB_PATH=$(dirname "$SCRIPT_DIR")
 fi
 
-LOG_FILE="$USB_PATH/{log_filename}"
-
 # Read Vehicle Hardware Telemetry
 CAR_SERIAL=$(getprop ro.serialno 2>/dev/null)
 if [ -z "$CAR_SERIAL" ] || [ "$CAR_SERIAL" = "unknown" ]; then
@@ -289,12 +286,13 @@ CAR_MODEL=$(getprop ro.product.model 2>/dev/null)
 
 CAR_DIR="$USB_PATH/completed_cars/${{CAR_SERIAL}}"
 mkdir -p "$CAR_DIR" 2>/dev/null
+STATE_DIR="$CAR_DIR"
+LOG_FILE="$CAR_DIR/{log_filename}"
 
 if [ -f "$CAR_DIR/completed.done" ] || [ -f "$USB_PATH/completed_cars/${{CAR_SERIAL}}.done" ]; then
     echo "=== CAR [$CAR_MODEL | $CAR_SERIAL] ALREADY PROVISIONED BY THIS USB — SKIPPING ===" >> "$LOG_FILE"
     exit 0
 fi
-STATE_DIR="$CAR_DIR"
 
 if [ ! -f "$LOG_FILE" ]; then
     echo "=== AERO {safe_title} START ===" > "$LOG_FILE"

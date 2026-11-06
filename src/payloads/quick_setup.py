@@ -27,6 +27,10 @@ from payloads.bash_builder import (
     gen_purge_stale_gms,
     gen_gms_compatibility_and_arabic,
     gen_wipe_data_partition,
+    gen_install_system_apps,
+    gen_install_user_apps,
+    gen_wait_for_boot_completed,
+    gen_direct_settings_xml_patch,
     gen_gboard_config
 )
 from payloads.install_gms import _get_gms_order_prefix, _is_system_priv_app
@@ -200,11 +204,10 @@ def prepare_quick_setup_usb(
         script_parts = []
         script_parts.append(gen_multi_vehicle_header("AERO QUICK SETUP (MASTER PROVISIONING)", "quick_setup.log"))
 
+        reboot_stage2_num = "#2" if wipe_factory_data else "#1"
+
         if wipe_factory_data:
             script_parts.append("""
-STATE_DIR="$USB_PATH/completed_cars/${CAR_SERIAL}"
-mkdir -p "$STATE_DIR" >> "$LOG_FILE" 2>&1
-
 # =============================================================
 # STAGE 1: CLEAN FACTORY PURGE & ROM INITIALIZATION (REBOOT #1)
 # =============================================================
@@ -226,124 +229,137 @@ if [ ! -f "$STATE_DIR/stage_factory_reset.done" ]; then
     (sleep 1; setprop sys.powerctl reboot || reboot -f || reboot) &
     exit 0
 fi
-
-echo "=== STAGE 2: INJECTING AEROBAR & GOOGLE SERVICES AFTER CLEAN ROM INIT ===" >> "$LOG_FILE"
 """)
 
+        # STAGE: DEPLOY PRIV-APPS & USER APPS (Stage 2 if wipe, Stage 1 if no wipe)
+        script_parts.append("""
+# =============================================================
+# STAGE INSTALL: DEPLOY PRIVILEGED APPS, GMS & USER APPLICATIONS
+# =============================================================
+if [ ! -f "$STATE_DIR/stage_install.done" ]; then
+    echo "=== STAGE INSTALL: INJECTING AEROBAR, GMS & USER APPLICATIONS ===" >> "$LOG_FILE"
+""")
         script_parts.append(gen_mount_rw())
         script_parts.append(gen_purge_stale_gms(log_var="LOG_FILE"))
 
-        # Inject System Priv-Apps (AeroBar + GMS)
-        script_parts.append("""
-# ==========================================
-# INJECT SYSTEM PRIVILEGED APPLICATIONS
-# ==========================================
-SOFT_DIR="$USB_PATH/update/soft"
-if [ -d "$SOFT_DIR" ]; then
-    echo "Injecting Privileged System Applications..." >> "$LOG_FILE"
-    for dir in "$SOFT_DIR"/*; do
-        if [ -d "$dir" ]; then
-            appname=$(basename "$dir")
-            TARGET_DIR="/system/priv-app/$appname"
-            echo "Installing privileged app: $appname -> $TARGET_DIR" >> "$LOG_FILE"
-            mkdir -p "$TARGET_DIR" >> "$LOG_FILE" 2>&1
-            for apk in "$dir"/*.apk; do
-                if [ -f "$apk" ]; then
-                    cp "$apk" "$TARGET_DIR/$appname.apk" >> "$LOG_FILE" 2>&1
-                    chmod 755 "$TARGET_DIR" >> "$LOG_FILE" 2>&1
-                    chmod 644 "$TARGET_DIR/$appname.apk" >> "$LOG_FILE" 2>&1
-                    chown -R system:system "$TARGET_DIR" >> "$LOG_FILE" 2>&1
-                fi
-            done
-            # Copy native .so libraries if extracted
-            for libdir in "$dir"/lib "$dir"/arm; do
-                if [ -d "$libdir" ]; then
-                    echo "Copying native libraries for $appname..." >> "$LOG_FILE"
-                    cp -r "$libdir" "$TARGET_DIR/" >> "$LOG_FILE" 2>&1
-                    chmod -R 755 "$TARGET_DIR/lib" 2>/dev/null
-                    chmod -R 755 "$TARGET_DIR/arm" 2>/dev/null
-                    chown -R system:system "$TARGET_DIR" >> "$LOG_FILE" 2>&1
-                fi
-            done
-        fi
-    done
-fi
-""")
+        # Inject System Priv-Apps (AeroBar + GMS) using standard proven installer
+        script_parts.append('\nSOFT_DIR="$USB_PATH/update/soft"\n')
+        script_parts.append(gen_install_system_apps("SOFT_DIR", "LOG_FILE"))
 
         # Inject Google Permissions XML & Compatibility Patches
         script_parts.append(gen_gms_compatibility_and_arabic(log_var="LOG_FILE"))
 
-        # Configure Aero Bar
+        # Hide stock HVAC & navigation bar (keeps factory launcher 100% active)
         script_parts.append("""
-# ==========================================
-# CONFIGURE AERO BAR PRIVILEGES & NAVIGATION
-# ==========================================
-echo "Configuring Aero Bar system permissions..." >> "$LOG_FILE"
-AEROBAR_STAGE="$USB_PATH/update/soft/AeroBar/AeroBar.apk"
-if [ -f "$AEROBAR_STAGE" ]; then
-    pm install -r -g "$AEROBAR_STAGE" >> "$LOG_FILE" 2>&1
-    appops set com.aero.bar.dongfeng_shine SYSTEM_ALERT_WINDOW allow >> "$LOG_FILE" 2>&1
-    appops set com.aero.bar.dongfeng_shine.debug SYSTEM_ALERT_WINDOW allow >> "$LOG_FILE" 2>&1
-    appops set com.aero.bar SYSTEM_ALERT_WINDOW allow >> "$LOG_FILE" 2>&1
-    settings put secure enabled_accessibility_services com.aero.bar.dongfeng_shine/com.aero.bar.service.AeroAccessibilityService:com.aero.bar.dongfeng_shine.debug/com.aero.bar.service.AeroAccessibilityService >> "$LOG_FILE" 2>&1
-    settings put secure accessibility_enabled 1 >> "$LOG_FILE" 2>&1
-fi
-
-# Hide stock HVAC & navigation bar (keeps factory launcher 100% active)
-echo "Hiding stock bottom bar..." >> "$LOG_FILE"
-settings put global policy_control immersive.navigation=* >> "$LOG_FILE" 2>&1
+echo "Eliminating stock 200px OEM bar & restoring window insets..." >> "$LOG_FILE"
+settings delete global policy_control >> "$LOG_FILE" 2>&1
 if [ -f /system/build.prop ]; then
     grep -q "qemu.hw.mainkeys" /system/build.prop && sed -i "s/qemu.hw.mainkeys=.*/qemu.hw.mainkeys=1/" /system/build.prop || echo "qemu.hw.mainkeys=1" >> /system/build.prop
 fi
 setprop qemu.hw.mainkeys 1 >> "$LOG_FILE" 2>&1
-""")
+killall com.android.systemui >> "$LOG_FILE" 2>&1
 
-        # Install User Apps (Chrome, Gboard, Maps)
-        script_parts.append("""
-# ==========================================
-# INSTALL GOOGLE USER APPS
-# ==========================================
-USER_APPS_DIR="$USB_PATH/update/user_apps"
-if [ -d "$USER_APPS_DIR" ]; then
-    echo "Installing Google User Applications..." >> "$LOG_FILE"
-    for apk in "$USER_APPS_DIR"/*.apk; do
-        if [ -f "$apk" ]; then
-            echo "Installing user package: $(basename "$apk")" >> "$LOG_FILE"
-            pm install -r -g "$apk" >> "$LOG_FILE" 2>&1
-        fi
-    done
+echo "Injecting Aero Bar privileged permissions whitelist..." >> "$LOG_FILE"
+cat << 'EOF' > /system/etc/permissions/privapp-permissions-aerobar.xml
+<?xml version="1.0" encoding="utf-8"?>
+<permissions>
+    <privapp-permissions package="com.aero.bar.dongfeng_shine">
+        <permission name="android.permission.INTERNAL_SYSTEM_WINDOW" />
+        <permission name="android.permission.STATUS_BAR_SERVICE" />
+        <permission name="android.permission.STATUS_BAR" />
+        <permission name="android.permission.PACKAGE_USAGE_STATS" />
+        <permission name="android.permission.KILL_BACKGROUND_PROCESSES" />
+        <permission name="android.permission.FORCE_STOP_PACKAGES" />
+        <permission name="android.permission.REMOVE_TASKS" />
+        <permission name="android.permission.REAL_GET_TASKS" />
+        <permission name="android.permission.WRITE_SECURE_SETTINGS" />
+        <permission name="android.permission.INTERACT_ACROSS_USERS" />
+        <permission name="android.permission.INTERACT_ACROSS_USERS_FULL" />
+    </privapp-permissions>
+</permissions>
+EOF
+chmod 644 /system/etc/permissions/privapp-permissions-aerobar.xml >> "$LOG_FILE" 2>&1
+
+if [ -f "/system/priv-app/AeroBar/AeroBar.apk" ]; then
+    echo "Explicitly registering Aero Bar package via PM..." >> "$LOG_FILE"
+    pm install -r -g /system/priv-app/AeroBar/AeroBar.apk >> "$LOG_FILE" 2>&1
 fi
 """)
 
-        # Configure Gboard Arabic Preset
-        script_parts.append(gen_gboard_config(log_var="LOG_FILE"))
+        # Install Google User Apps (Chrome, Gboard, Maps) using the battle-tested multi-tier installer
+        script_parts.append('\nUSER_APPS_DIR="$USB_PATH/update/user_apps"\n')
+        script_parts.append(gen_install_user_apps("USER_APPS_DIR", "LOG_FILE"))
 
-        # Configure Post-Boot Auto-Launch for Aero Bar
-        script_parts.append("""
-# ==========================================
-# POST-BOOT AUTO-LAUNCH AERO BAR
-# ==========================================
-echo "Enabling Aero Bar post-boot startup..." >> "$LOG_FILE"
-(
-    # Launch Aero Bar once Android finishes booting
-    BOOT_COUNT=0
-    while [ "$(getprop sys.boot_completed)" != "1" ]; do
-        sleep 2
-        BOOT_COUNT=$((BOOT_COUNT + 1))
-        [ $BOOT_COUNT -gt 45 ] && break
+        # Relock system partition
+        script_parts.append(gen_mount_ro())
+
+        # Trigger reboot to register system partition priv-apps
+        script_parts.append(f"""
+    echo "=== STAGE INSTALL COMPLETE — REBOOTING VEHICLE ({reboot_stage2_num}) TO REGISTER SYSTEM PACKAGES ===" >> "$LOG_FILE"
+    touch "$STATE_DIR/stage_install.done"
+    sync
+    sec=3
+    while [ $sec -gt 0 ]; do
+        echo "System will restart after $sec seconds..." >> "$LOG_FILE"
+        sleep 1
+        sec=$((sec - 1))
     done
-    sleep 3
-    am start -n com.aero.bar.dongfeng_shine/com.aero.bar.presentation.MainActivity 2>/dev/null || \
-    am start -n com.aero.bar/com.aero.bar.presentation.MainActivity 2>/dev/null
-) &
+    sync
+    (sleep 1; setprop sys.powerctl reboot || reboot -f || reboot) &
+    exit 0
+fi
 """)
 
-        script_parts.append(gen_mount_ro())
+        # STAGE POST-BOOT: PERMISSION GRANTS, GBOARD & AERO BAR STARTUP
+        script_parts.append("""
+# =============================================================
+# STAGE POST-BOOT: PERMISSION GRANTS, GBOARD & AERO BAR STARTUP
+# =============================================================
+echo "=== STAGE POST-BOOT: CONFIGURING SYSTEM & STARTING AERO BAR ===" >> "$LOG_FILE"
+""")
+        # Wait for Android framework to report boot completion
+        script_parts.append(gen_wait_for_boot_completed(settle_seconds=5, log_var="LOG_FILE"))
+
+        # Configure Aero Bar privileges now that PackageManager has scanned /system/priv-app/AeroBar and assigned its UID!
+        script_parts.append("""
+echo "Configuring Aero Bar system permissions..." >> "$LOG_FILE"
+appops set com.aero.bar.dongfeng_shine SYSTEM_ALERT_WINDOW allow >> "$LOG_FILE" 2>&1
+appops set com.aero.bar.dongfeng_shine.debug SYSTEM_ALERT_WINDOW allow >> "$LOG_FILE" 2>&1
+appops set com.aero.bar SYSTEM_ALERT_WINDOW allow >> "$LOG_FILE" 2>&1
+settings put secure enabled_accessibility_services com.aero.bar.dongfeng_shine/com.aero.bar.service.AeroAccessibilityService:com.aero.bar.dongfeng_shine.debug/com.aero.bar.service.AeroAccessibilityService:com.aero.bar/com.aero.bar.service.AeroAccessibilityService >> "$LOG_FILE" 2>&1
+settings put secure accessibility_enabled 1 >> "$LOG_FILE" 2>&1
+pm enable com.aero.bar.dongfeng_shine >> "$LOG_FILE" 2>&1
+pm enable com.aero.bar.dongfeng_shine.debug >> "$LOG_FILE" 2>&1
+pm enable com.aero.bar >> "$LOG_FILE" 2>&1
+""")
+
+        # Configure Gboard Arabic Profile & direct settings patch
+        script_parts.append("""GBOARD_PRESET="$USB_PATH/update/gboard_data"\n""")
+        script_parts.append(gen_gboard_config("GBOARD_PRESET", log_var="LOG_FILE"))
+        script_parts.append(gen_direct_settings_xml_patch(log_var="LOG_FILE"))
+
+        # Launch Aero Bar immediately
+        script_parts.append("""
+echo "Ensuring stock bar is eliminated and launching Aero Bar..." >> "$LOG_FILE"
+settings delete global policy_control >> "$LOG_FILE" 2>&1
+setprop qemu.hw.mainkeys 1 >> "$LOG_FILE" 2>&1
+killall com.android.systemui >> "$LOG_FILE" 2>&1
+pkill -f com.android.systemui >> "$LOG_FILE" 2>&1
+
+am start-foreground-service -n com.aero.bar.dongfeng_shine/com.aero.bar.service.AeroBarOverlayService >> "$LOG_FILE" 2>&1 || \
+am start-foreground-service -n com.aero.bar.dongfeng_shine.debug/com.aero.bar.service.AeroBarOverlayService >> "$LOG_FILE" 2>&1 || \
+am start-foreground-service -n com.aero.bar/com.aero.bar.service.AeroBarOverlayService >> "$LOG_FILE" 2>&1
+
+am start -n com.aero.bar.dongfeng_shine/com.aero.bar.ui.MainActivity >> "$LOG_FILE" 2>&1 || \
+am start -n com.aero.bar.dongfeng_shine.debug/com.aero.bar.ui.MainActivity >> "$LOG_FILE" 2>&1 || \
+am start -n com.aero.bar/com.aero.bar.ui.MainActivity >> "$LOG_FILE" 2>&1
+""")
+
+        # Completion footer (with_reboot=False, marks completed.done in $CAR_DIR and plays chime)
         script_parts.append(gen_multi_vehicle_footer(
             success_status="SUCCESS",
-            with_reboot=True,
-            reboot_delay=3,
-            reboot_msg="Rebooting infotainment system to activate Aero Bar & Google Services..."
+            with_reboot=False,
+            log_var="LOG_FILE"
         ))
 
         unified_script = "".join(script_parts)
