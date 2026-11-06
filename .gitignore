@@ -1,0 +1,60 @@
+# ==============================================================================
+# Aero Suite — Git Ignore Configuration
+# ==============================================================================
+
+# Python bytecode & virtual environments
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env/
+
+# Build artifacts, dists & executables
+build/
+dist/
+nuitka_dist/
+*.spec.bak
+*.exe
+*.rar
+*.zip
+AeroSuite_v*/
+
+# OEM Factory Dumps & Backups (Heavy binary files ~670MB)
+FactoryBackup/
+backups/*
+!backups/.gitkeep
+Owners Logs/
+logs/
+*.log
+
+# APK repositories & App Data (Exceeds GitHub limits)
+apks/
+*.apk
+*.odex
+*.vdex
+*.oat
+gboard_data/
+
+# Reverse engineering & Decompiled artifacts
+jadx*/
+*_decompiled/
+scratch/
+legacy/
+
+# Test artifacts & temporary files
+test_*.png
+test_*.py
+scratch_*.png
+app_settings.json
+*.tmp
+
+# User notes & internal guides
+TECHNICIAN_SCENARIOS_GUIDE.txt
+README_INSTRUCTIONS_v1.1_Beta.txt
+
+# IDE & OS configs
+.idea/
+.vscode/
+.cursorrules
+Thumbs.db
+.DS_Store
