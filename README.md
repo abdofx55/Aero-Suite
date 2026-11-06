@@ -6,55 +6,63 @@
 [![PySide6 / Qt6](https://img.shields.io/badge/GUI-PySide6%20%2F%20Qt6-41CD52?style=for-the-badge&logo=qt&logoColor=white)](https://www.qt.io/)
 [![Platform](https://img.shields.io/badge/Platform-Dongfeng%20Shine%20AAOS%208.1-00D2FF?style=for-the-badge&logo=android&logoColor=white)](https://developer.android.com/)
 [![Architecture](https://img.shields.io/badge/Architecture-Clean%20Architecture%20%26%20SOLID-FF9F43?style=for-the-badge)](https://en.wikipedia.org/wiki/Clean_architecture)
+[![License](https://img.shields.io/badge/License-Proprietary-red?style=for-the-badge)](https://github.com/)
 
 ---
 
-## 🌟 English Overview
+## 1. System Overview
 
 **Aero Automotive Suite v2.0** is an all-in-one desktop workstation designed to provision, customize, backup, and modernize Android Automotive OS headunits (Dongfeng Shine / Aeolus D53). It enables technicians and vehicle owners to execute complex kernel-level modifications, install privileged navigation systems, inject the Google Ecosystem, and toggle CAN-Bus comfort features—completely offline via automated USB payload delivery.
 
-### 🚀 Key Capabilities
-
-1. **Multi-Action Execution Basket & Pipeline (`BasketManager`):**
-   - Stage multiple operations simultaneously (e.g., install apps + toggle CAN-Bus tweaks + inject Google Services + deploy Aero Bar).
-   - Generates a single, atomic, idempotent shell payload (`update/custom_rep.sh`) with strict execution order and automatic reboot hooks.
-
-2. **Full 10-Component Google Ecosystem Deployment:**
-   - Seamlessly injects Google Services Framework (GSF), Google Play Services, Play Store, Google Files, Gboard (with bilingual layout and preferences), Google Speech Services, Maps, and Chrome directly into `/system/priv-app/`.
-   - Automated setup completion flags (`device_provisioned`, `user_setup_complete`) and instant first-boot account sign-in.
-
-3. **Direct CAN-Bus Vehicle Tweaks (No OBD-II Dongle Required):**
-   - Direct integration with Dongfeng's `ICanBusService` (`qg.canbus` Binder IPC).
-   - Configures: Welcome Light, Seat Welcome / Easy Entry, Speed-Sensing Auto Door Lock (15 km/h), Auto Park & Unlock on Engine Off, and Electric Liftgate safety lock.
-
-4. **Aero Bar & Navigation Dock Deployment:**
-   - Deploys the modern single-row (88px) navigation dock, hides legacy dual-row OEM bars, and configures accessibility and overlay permissions automatically.
-
-5. **1:1 Bit-Exact System Clone, Backup & Restore:**
-   - Preserves POSIX file permissions, extended attributes, symlinks, and original SELinux contexts.
-   - Backs up partitions, `/data/`, APKs, settings databases, and vehicle calibration data.
-
-6. **High-Performance Dark GUI (PySide6 / Qt6):**
-   - GPU-accelerated responsive interface matching automotive cockpit design tokens (`#070A0E`, Cyan `#00D2FF`).
-   - Full internationalization across **7 languages**: Arabic (full RTL), English, Russian, Chinese, Spanish, Portuguese, and Vietnamese.
-   - Built-in FAT32 formatter, live USB detection, and real-time execution terminal.
+Built using **Python 3.12** and **PySide6 (Qt6)** under strict **Clean Architecture** and **SOLID principles**, it decouples UI presentation, transactional service orchestration, hardware USB device management, and idempotent shell payload generation.
 
 ---
 
-## 🌐 نظرة عامة باللغة العربية (Arabic Summary)
+## 2. Key Capabilities
 
-برنامج **Aero Automotive Suite v2.0** هو بيئة عمل هندسية متكاملة مخصصة لشاشات سيارات **دونغ فينغ شاين (Dongfeng Shine / Aeolus D53)**، تتيح لمالكي السيارات وفنيي التعديل إجراء جميع العمليات المتقدمة على نظام السيارة بضغطة زر وبدون الحاجة لأجهزة فحص باهظة الثمن أو فتح الـ Root يدوياً:
+### 1. Multi-Action Execution Basket & Pipeline (`BasketManager`)
+- **Heterogeneous Batching:** Stage multiple independent operations into an execution queue (e.g., Install User Apps + Toggle CAN-Bus Tweaks + Inject Google Services + Deploy Aero Bar).
+- **Idempotent Shell Synthesis:** The unified **`BashBuilder`** engine compiles all staged pipeline items into a single, cohesive, atomic shell script (`update/custom_rep.sh`) with strict execution order safety:
+  1. System remounts & pre-flight integrity check
+  2. CAN-Bus vehicle parameters configuration
+  3. Custom system privileged applications (`/system/priv-app/`)
+  4. Standard user applications installation (`pm install`)
+  5. Launcher and system UI state transitions
+  6. Permissions granting and settings injection
+  7. Automated post-boot application launches (`Auto-Launch`)
+  8. Cache sync and safe atomic kernel reboot
 
-### أهم المميزات في الإصدار 2.0:
-- **سلة الأوامر المجمعة (Execution Basket):** إمكانية اختيار عدة عمليات مختلفة (تثبيت تطبيقات + تفعيل خدمات جوجل + تعديل خصائص السيارة + تنصيب Aero Bar) ودمجها تلقائياً في فلاشة واحدة عبر سكربت مجمع فائق الأمان.
-- **منظومة خدمات جوجل المتكاملة (10 خدمات):** تثبيت متجر Play Store، كيبورد Gboard، خدمات التعرف الصوتي، الخرائط، ومتصفح Chrome كخدمات نظام رسمية ومحمية.
-- **تعديل خصائص السيارة عبر الـ CAN-Bus:** قفل الأبواب التلقائي مع السرعة، ترحيب المقعد الذكي عند الدخول، إضاءة الترحيب، وتفعيل الهاند بريك تلقائياً عند إطفاء المحرك.
-- **تثبيت بار التحكم الذكي (Aero Bar):** دمج شريط الملاحة الرشيق الموفر لمساحة الشاشة مع تفعيل كافة الصلاحيات بدون تدخل المستخدم.
-- **واجهة عصرية بلغات متعددة ودعم كامل للعربية (RTL):** واجهة رسومية سريعة مبنية بـ PySide6 تدعم اللغة العربية بالكامل وتهيئة الفلاشات بصيغة FAT32 تلقائياً.
+### 2. Full 10-Component Google Ecosystem Deployment
+Seamlessly injects the complete Google Android stack tailored specifically to Qualcomm MSM8953 Android 8.1 without bootloops or missing shared libraries:
+- **Core Framework:** Google Services Framework (GSF), Google Account Manager, Google Play Services (GMS), and Google Play Store.
+- **Productivity & Input:** Files by Google (Storage Manager with full storage permissions), Gboard (bilingual Arabic/English layout with automated preference configuration), and Google Speech Services (TTS & Voice Recognition XML).
+- **Navigation & Web:** Google Maps Navigation and Google Chrome Stable.
+- **First-Boot Automation:** Automatically configures `device_provisioned` and `user_setup_complete` flags, immediately launching Play Store upon startup for account sign-in.
+
+### 3. Direct CAN-Bus Vehicle Tweaks (No OBD-II Dongle Required)
+Direct integration with Dongfeng's `ICanBusService` (`qg.canbus` Binder IPC) to configure factory body control parameters:
+- **Welcome Light:** Exterior courtesy lighting upon approaching the vehicle with the smart key.
+- **Seat Welcome / Easy Entry:** Slides driver electric power seat rearward upon opening the door, restoring driving position upon ignition.
+- **Speed-Sensing Auto Door Lock:** Automatically locks all doors upon exceeding 15 km/h.
+- **Auto Park & Unlock on Engine Off:** Automatically engages Electric Parking Brake (EPB) and unlocks doors when turning off the engine.
+- **Electric Liftgate Safety Lock:** Prevents accidental rear trunk activation during vehicle motion.
+
+### 4. Aero Bar & Navigation Dock Deployment
+- Automates deployment of the single-row (88px) modern navigation dock into `/system/priv-app/AeroBar/`.
+- Pre-grants overlay and accessibility permissions, configures keep-alive policies, and hides the legacy OEM dual-row navigation bar.
+
+### 5. 1:1 Bit-Exact System Clone, Backup & Restore
+- Preserves full POSIX file permissions, extended attributes, symlinks, and original SELinux contexts.
+- Comprehensive backup and restore of system partitions, user applications (`/data/app/`), application databases, and vehicle calibrations.
+
+### 6. High-Performance Dark GUI (PySide6 / Qt6)
+- GPU-accelerated responsive interface matching automotive cockpit design tokens (`#070A0E`, Cyan `#00D2FF`).
+- **7 Supported Languages:** English, Arabic (full bidirectional RTL layout), Russian, Chinese, Spanish, Portuguese, and Vietnamese.
+- Built-in automated FAT32 filesystem formatter, live USB drive detection, and real-time execution terminal.
 
 ---
 
-## 📁 Project Architecture & Structure
+## 3. Architecture & Directory Structure
 
 ```
 Aero_Suite/
@@ -62,20 +70,27 @@ Aero_Suite/
 ├── build_release.ps1           # Standalone executable packaging script (PyInstaller)
 ├── src/
 │   ├── core/                   # State store, central paths, i18n engine, constants
-│   ├── controllers/            # Hardware USB controller & payload orchestrator
+│   │   ├── paths.py            # Centralized path resolution across dev and frozen environments
+│   │   ├── state.py            # Reactive state management
+│   │   └── i18n.py             # Multi-language internationalization loader
+│   ├── controllers/            # Hardware USB controller & payload orchestrators
 │   ├── payloads/               # Atomic shell generators (GMS, AeroBar, CAN-Bus, Backup)
+│   │   ├── bash_builder.py     # Reusable shell snippet synthesis engine
+│   │   ├── install_gms.py      # Google ecosystem deployment payload
+│   │   ├── install_hvac_bar.py # Aero Bar deployment payload
+│   │   └── vehicle_tweaks.py   # CAN-Bus vehicle parameters payload
 │   ├── services/               # Execution basket & multi-action transaction engine
 │   ├── ui/                     # PySide6 components, dark theme, and views
 │   │   ├── components/         # Reusable cards, navigation bar, terminal console
 │   │   ├── views/              # Feature screens (Apps, Tweaks, GMS, Bar, Backup, Tools)
 │   │   └── assets/             # Vector icons, payment logos, and illustrations
-│   └── locales/                # External JSON string catalogs (ar, en, ru, zh, es, pt, vi)
+│   └── locales/                # External JSON string catalogs (en, ar, ru, zh, es, pt, vi)
 └── docs/                       # Technical references, guides, and changelog
 ```
 
 ---
 
-## 🛠️ Requirements & Setup
+## 4. Requirements & Installation
 
 ### Prerequisites
 - Python 3.11 or 3.12 (64-bit)
@@ -84,7 +99,7 @@ Aero_Suite/
 ### Installation
 ```bash
 # Clone the repository
-git clone https://github.com/YourUsername/Aero-Suite.git
+git clone https://github.com/abdofx55/Aero-Suite.git
 cd Aero-Suite
 
 # Create a virtual environment
@@ -100,14 +115,15 @@ pip install PySide6 psutil
 python main.py
 ```
 
-### Building Standalone Executable (.exe)
+### Packaging Standalone Executable (.exe)
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\build_release.ps1
 ```
+The compiled, standalone executable will be generated in `dist/AeroSuite.exe`.
 
 ---
 
-## 👤 Author & Support
+## 5. Author & Support
 
 - **Lead Engineer:** Abdelrhman Hamdy
 - **Contact:** abdellrhman.hamdi@gmail.com | +201095449725
@@ -115,6 +131,6 @@ powershell -ExecutionPolicy Bypass -File .\build_release.ps1
 
 ---
 
-## 📄 License & Terms
+## 6. License & Terms
 
-Proprietary Software — Developed specifically for the Aero Automotive ecosystem. Unauthorized distribution or reverse engineering of binary components is strictly prohibited.
+Proprietary Software — Developed specifically for the Aero Automotive ecosystem. All rights reserved.
