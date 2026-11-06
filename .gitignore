@@ -17,7 +17,16 @@ nuitka_dist/
 *.exe
 *.rar
 *.zip
+*.7z
+*.tar
+*.gz
+*.tgz
+*.bz2
+*.xz
 AeroSuite_v*/
+*Beta*
+releases/
+release_*/
 
 # OEM Factory Dumps & Backups (Heavy binary files ~670MB)
 FactoryBackup/
